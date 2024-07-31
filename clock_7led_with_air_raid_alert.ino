@@ -9,6 +9,13 @@
 #define CLK D5
 #define DIO D3
 
+// Define the RTC connections pins
+#define SCL D6
+#define SDA D7
+
+// Define the alarm LED pin
+#define LED_ALARM D8
+
 // Define ports of buttons
 #define   SWITCH_TO_CONSOLE_MODE  D1
 #define   SWITCH_NO_ALARM_MODE    D2
@@ -17,7 +24,7 @@
 // #define   TEMPERATURE_TIME    5
 // #define   CLOCK_TIME          10
 
-#define invDigitalRead( X )   ~digitalRead( X ) & HIGH
+// #define invDigitalRead( X )   ~digitalRead( X ) & HIGH
 
 #define   NOP __asm__ __volatile__ ("nop\n\t")
 
@@ -28,7 +35,7 @@ TM1637Display display = TM1637Display(CLK, DIO);
 uRTCLib rtc(0x68);
 
 // DS18B20 sensor
-// MicroDS18B20<12> sensor1;
+// MicroDS18B20<D4> sensor1;
 
 // Create an array that turns all segments ON
 const uint8_t allON[] = {0xff, 0xff, 0xff, 0xff};
@@ -90,17 +97,18 @@ Neotimer secondtimer = Neotimer( 400 );
 // }
 
 void setup() {
-  pinMode( LED_BUILTIN, OUTPUT );
+  //pinMode( LED_BUILTIN, OUTPUT );
+  pinMode( LED_ALARM, OUTPUT );
   pinMode( SWITCH_TO_CONSOLE_MODE, INPUT_PULLUP );
   pinMode( SWITCH_NO_ALARM_MODE, INPUT_PULLUP );
+  digitalWrite( LED_ALARM, LOW );
   	// Set the brightness to 5 (0=dimmest 7=brightest)
 	display.setBrightness(5);
 	// Set all segments ON
 	display.setSegments(allON);
-  URTCLIB_WIRE.begin();
+  URTCLIB_WIRE.begin( SDA, SCL );
 	delay(2000);
-   //rtc.set(0, 44, 16, 3, 9, 5, 23);
-	 //delay(1000);
+  // rtc.set(0, 12, 18, 3, 31, 7, 24); delay(1000);
   display.clear();
   if ( rtc.lostPower() ) {
     display.setSegments(err,3,1);
@@ -119,88 +127,13 @@ void setup() {
   hours = rtc.hour();
   mins = rtc.minute();
   // Serial.begin(9600);
-  // btn_reset_tmr.start();
-  // btn_press_set_h_tmr.start();
-  // btn_press_set_m_tmr.start();
-  // wdt_enable (WDTO_8S);
 }
 
 void loop() {
-/*
-  // Handler of the "Set 0" button
-  if ( btn_reset_tmr.debounce( invDigitalRead( BUTTON_RESET ) ) ) {
-    hours = mins = 0;
-    set_rtc();
-  }
-  
-  // Handler of the "Set minutes" button
-  if ( btn_press_set_m_tmr.debounce( invDigitalRead( BUTTON_SET_MINUTES ) ) ) {
-    btn_min = true;
-    btn_press_set_m_tmr.reset();
-    btn_release_set_m_tmr.start();
-    i_min = 0;
-    first_pass_min = true;
-  }
-  if ( btn_hold_set_m_tmr.repeat() && btn_min ) {
-    mins++;
-    if ( mins > 59 ){
-      mins = 0;
-    }
-    display.showNumberDecEx( hours * 100 + mins, dots_display?0b01000000:0, true, 4, 0);
-    if ( i_min < 3 ) {
-      i_min++;
-    }
-    if ( first_pass_min && i_min > 2 ) {
-      btn_hold_set_m_tmr.set(400);
-      first_pass_min = false;
-    }
-  }
-  if ( btn_release_set_m_tmr.debounce( digitalRead( BUTTON_SET_MINUTES ) ) ) {
-    btn_min = false;
-    set_rtc();
-    btn_press_set_m_tmr.start();
-    btn_release_set_m_tmr.reset();
-    if ( i_min > 2 ) {
-      btn_hold_set_m_tmr.set(1000);
-    }
-  }
-
-  // Handler of the "Set hours" button
-  if ( btn_press_set_h_tmr.debounce( invDigitalRead( BUTTON_SET_HOURS ) ) ) {
-    btn_hrs = true;
-    btn_press_set_h_tmr.reset();
-    btn_release_set_h_tmr.start();
-    i_hrs = 0;
-    first_pass_hrs = true;
-  }
-  if ( btn_hold_set_h_tmr.repeat() && btn_hrs ) {
-     hours++;
-     if ( hours > 23 ) {
-       hours = 0;
-     }
-    display.showNumberDecEx( hours * 100 + mins, dots_display?0b01000000:0, true, 4, 0);
-    if ( i_hrs < 3 ) {
-      i_hrs++;
-    }
-    if ( first_pass_hrs && i_hrs > 2 ) {
-      btn_hold_set_h_tmr.set(400);
-      first_pass_hrs = false;
-    }
-  }
- if ( btn_release_set_h_tmr.debounce( digitalRead( BUTTON_SET_HOURS ) ) ) {
-    btn_hrs = false;
-    set_rtc();
-    btn_press_set_h_tmr.start();
-    btn_release_set_h_tmr.reset();
-    if ( i_hrs > 2 ) {
-      btn_hold_set_h_tmr.set(1000);
-    }
-  }
-*/
   // Displays current time ( with dots ) or temperature
   if ( maintimer.repeat() ) {
 
-      if ( temp_display ) {
+ /*     if ( temp_display ) {
         temp_enable++;
         if ( temp_enable > TEMPERATURE_TIME ) {
           temp_display = false;
@@ -222,15 +155,16 @@ void loop() {
           display.clear();
         }
         display_temp( temper );
-      } else { // displays time 
+      } else { // displays time
+  */
         rtc.refresh();
         hours = rtc.hour();
         mins = rtc.minute();
         display.showNumberDecEx( hours * 100 + mins, 0b01000000, true, 4, 0);
-      }
+  //    }
      
     dots_display = true;
-    digitalWrite( LED_BUILTIN, HIGH );
+    // digitalWrite( LED_BUILTIN, HIGH );
     secondtimer.start();
     // wdt_reset();
   }
@@ -239,11 +173,15 @@ void loop() {
   if ( secondtimer.done() ){
     display.showNumberDecEx( hours * 100 + mins, 0, true, 4, 0);
     dots_display = false;
-    digitalWrite( LED_BUILTIN, LOW );
+    // digitalWrite( LED_BUILTIN, LOW );
     secondtimer.reset();
   }
 
   // nothing
+  NOP;
+  NOP;
+  NOP;
+  NOP;
   NOP;
   NOP;
   NOP;
@@ -261,6 +199,7 @@ void set_rtc() {
   rtc.set( sec, mins, hours, dayOfWeek, day, month, year );
 }
 
+/*
 void display_temp( int t ){
   uint16_t t1 = abs(t);
   uint8_t hdig = t1 / 10;
@@ -274,3 +213,4 @@ void display_temp( int t ){
     display.setSegments(temp_segments);
   }
 }
+*/
