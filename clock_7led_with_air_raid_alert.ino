@@ -1,8 +1,19 @@
+#define DEBUG_SERIAL  // because just "DEBUG" defined in PZEM004Tv30.h ( legacy :)
+#define DBG_WIFI    // because "DEBUG_WIFI" defined in a WiFiClient library
+
+#if defined ( DBG_WIFI ) && not defined ( DEBUG_SERIAL )
+#define DEBUG_SERIAL
+#endif
+
 // Include the library
 #include <TM1637Display.h>  // https://github.com/avishorp/TM1637
-#include <neotimer.h>       // https://github.com/jrullan/neotimer
 #include "uRTCLib.h"        // https://github.com/Naguissa/uRTCLib
-// #include <avr/wdt.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+//#include <WiFiClientSecureBearSSL.h>
+#include <EEPROM.h>
+#include <SimpleCLI.h>  // https://github.com/SpacehuhnTech/SimpleCLI
+#include "TickTwo.h"    // https://github.com/sstaub/TickTwo
 // #include <microDS18B20.h>   // https://github.com/GyverLibs/microDS18B20/
 
 // Define the 4 digits display connections pins
@@ -23,8 +34,7 @@
 // Define intervals to display temperature and time 
 // #define   TEMPERATURE_TIME    5
 // #define   CLOCK_TIME          10
-
-// #define invDigitalRead( X )   ~digitalRead( X ) & HIGH
+#define     TICS_SHOW_DOTS    4  // ( interval when dots on, 1/10s )
 
 #define   NOP __asm__ __volatile__ ("nop\n\t")
 
@@ -36,6 +46,18 @@ uRTCLib rtc(0x68);
 
 // DS18B20 sensor
 // MicroDS18B20<D4> sensor1;
+
+// Create CLI Object
+SimpleCLI cli;
+
+void pulse();
+void update_time();
+void sync_ntp();
+
+// Create timers object
+TickTwo timer1( pulse, 100);
+TickTwo timer2( update_time, 1000);
+TickTwo timer3( sync_ntp, 3600*1000);
 
 // Create an array that turns all segments ON
 const uint8_t allON[] = {0xff, 0xff, 0xff, 0xff};
@@ -50,6 +72,7 @@ const uint8_t err[] = {
   SEG_E | SEG_G                                     // r
 };
 
+// Create an array for the temperature display
 uint8_t temp_segments[] = {
   SEG_G,                          // Minus
   SEG_G,                          // Stub
@@ -61,40 +84,13 @@ uint8_t secs = 0;
 uint8_t mins = 0;
 uint8_t hours = 0;
 
-// bool btn_min = false;
-// bool first_pass_min = true;
-// uint8_t i_min = 0;
-// bool btn_hrs = false;
-// bool first_pass_hrs = true;
-// uint8_t i_hrs = 0;
 bool dots_display = false;
-// bool temp_display = false;
-// uint8_t clock_enable = 0;
+bool temp_display = false;
+unsigned int tics_show_dots = 0;
 // uint8_t temp_enable = 0;
 // int temper = 0;
+bool enable_cli = false;
 
-Neotimer maintimer = Neotimer( 1000 );
-Neotimer secondtimer = Neotimer( 400 );
-// Neotimer btn_reset_tmr = Neotimer();
-// Neotimer btn_press_set_h_tmr = Neotimer();
-// Neotimer btn_press_set_m_tmr = Neotimer();
-// Neotimer btn_hold_set_h_tmr = Neotimer();
-// Neotimer btn_hold_set_m_tmr = Neotimer();
-// Neotimer btn_release_set_h_tmr = Neotimer();
-// Neotimer btn_release_set_m_tmr = Neotimer();
-
-/* 
- * без скидання MCUSR буде bootloop після спрацювання watchdog після включення живлення на чіпах PA & PB
- * що цікаво, після скидання сигналом RESET або у випадку чіпів P, такого ефекту нема.
- * Взагалі-то досить код із цієї функції помістити в функцію setup, але мануал на чіп радить так.
- */
- 
-// void clr_mcusr(void) __attribute__((naked)) __attribute__((section(".init3")));
-
-// void clr_mcusr(void){
-  // MCUSR = 0;
-  // wdt_disable();
-// }
 
 void setup() {
   //pinMode( LED_BUILTIN, OUTPUT );
@@ -102,14 +98,16 @@ void setup() {
   pinMode( SWITCH_TO_CONSOLE_MODE, INPUT_PULLUP );
   pinMode( SWITCH_NO_ALARM_MODE, INPUT_PULLUP );
   digitalWrite( LED_ALARM, LOW );
-  	// Set the brightness to 5 (0=dimmest 7=brightest)
+  
+  // Set the brightness to 5 (0=dimmest 7=brightest)
 	display.setBrightness(5);
 	// Set all segments ON
 	display.setSegments(allON);
-  URTCLIB_WIRE.begin( SDA, SCL );
-	delay(2000);
-  // rtc.set(0, 12, 18, 3, 31, 7, 24); delay(1000);
+  delay(2000);
   display.clear();
+
+  URTCLIB_WIRE.begin( SDA, SCL );
+  // rtc.set(0, 12, 18, 3, 31, 7, 24); delay(1000);
   if ( rtc.lostPower() ) {
     display.setSegments(err,3,1);
     rtc.lostPowerClear();
@@ -126,57 +124,27 @@ void setup() {
   }
   hours = rtc.hour();
   mins = rtc.minute();
+
   // Serial.begin(9600);
+  
+  timer1.start();
+  timer2.start();
+  timer3.start();
+
 }
 
 void loop() {
-  // Displays current time ( with dots ) or temperature
-  if ( maintimer.repeat() ) {
-
- /*     if ( temp_display ) {
-        temp_enable++;
-        if ( temp_enable > TEMPERATURE_TIME ) {
-          temp_display = false;
-          temp_enable = 0;
-        }
-      } else {
-        clock_enable++;
-        if ( clock_enable ==  CLOCK_TIME ){
-          sensor1.requestTemp();
-        }
-        if ( clock_enable > CLOCK_TIME ) {
-          temp_display = true;
-          clock_enable = 0;
-        }
-      }
-      if ( temp_display ) { // displays temperature
-        temper = sensor1.getTemp();
-        if ( temp_enable == 0 ) {
-          display.clear();
-        }
-        display_temp( temper );
-      } else { // displays time
-  */
-        rtc.refresh();
-        hours = rtc.hour();
-        mins = rtc.minute();
-        display.showNumberDecEx( hours * 100 + mins, 0b01000000, true, 4, 0);
-  //    }
-     
-    dots_display = true;
-    // digitalWrite( LED_BUILTIN, HIGH );
-    secondtimer.start();
-    // wdt_reset();
+ if (enable_cli) {
+    loop_cli_mode();
+  }else{
+    loop_usual_mode();
   }
-  
-  // Dots off for blink
-  if ( secondtimer.done() ){
-    display.showNumberDecEx( hours * 100 + mins, 0, true, 4, 0);
-    dots_display = false;
-    // digitalWrite( LED_BUILTIN, LOW );
-    secondtimer.reset();
-  }
+}
 
+void loop_usual_mode(){
+  timer1.update();
+  timer2.update();
+  timer3.update();
   // nothing
   NOP;
   NOP;
@@ -186,7 +154,31 @@ void loop() {
   NOP;
   NOP;
   NOP;
+}
 
+void pulse() {
+  if ( tics_show_dots > 0) {
+    if ( ! dots_display ) {
+      dots_display = true;
+      display.showNumberDecEx( hours * 100 + mins, 0b01000000, true, 4, 0);
+    }
+    tics_show_dots--;
+  }else{
+    if ( dots_display ) {
+      display.showNumberDecEx( hours * 100 + mins, 0, true, 4, 0);
+      dots_display = false;
+    }
+  }
+}
+
+void update_time() {
+  rtc.refresh();
+  hours = rtc.hour();
+  mins = rtc.minute();
+  tics_show_dots = TICS_SHOW_DOTS;
+}
+
+void sync_ntp() {
 }
 
 void set_rtc() {
