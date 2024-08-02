@@ -11,6 +11,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 //#include <WiFiClientSecureBearSSL.h>
+#include <time.h>
 #include <EEPROM.h>
 #include <SimpleCLI.h>  // https://github.com/SpacehuhnTech/SimpleCLI
 #include "TickTwo.h"    // https://github.com/sstaub/TickTwo
@@ -79,6 +80,9 @@ uint8_t temp_segments[] = {
   SEG_G,                          // Stub
   SEG_A | SEG_B | SEG_F | SEG_G   // Degree symbol
 };
+
+time_t now;                       // this are the seconds since Epoch (1970) - UTC
+tm tm;                            // the structure tm holds time information in a more convenient way
 
 uint8_t secs = 0;
 uint8_t mins = 0;
