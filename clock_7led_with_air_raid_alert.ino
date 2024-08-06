@@ -95,6 +95,23 @@ unsigned int tics_show_dots = 0;
 // int temper = 0;
 bool enable_cli = false;
 
+// EEPROM data
+unsigned int mark = 0x55aa55aa;
+unsigned int region = 0;
+unsigned int poll_interval = 60;  // minutes
+char ssid[33];
+char passw[65];
+char host[33];
+char tzdata[129];
+
+#define PT_REGION       sizeof(mark)
+#define PT_POLL         PT_REGION+sizeof(region)
+#define PT_SSID         PT_POLL + sizeof(poll_interval)
+#define PT_PASSW        PT_SSID + sizeof(ssid)
+#define PT_HOST         PT_PASSW + sizeof(passw)
+#define PT_TZDATA       PT_HOST + sizeof(host)
+#define PT_CRC          PT_TZDATA + sizeof(tzdata)
+#define SIZE_EEPROM     PT_TZDATA + sizeof(tzdata) - 1 // PT_CRC d'not count
 
 void setup() {
   //pinMode( LED_BUILTIN, OUTPUT );

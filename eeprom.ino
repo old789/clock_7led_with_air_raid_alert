@@ -1,33 +1,18 @@
-/*
+
 void eeprom_save(){
-#ifdef DEBUG_SERIAL
-  const char msg[] = "Config saved to EEPROM";
-#endif
   EEPROM.put(0, mark);
-  EEPROM.put(PT_INPUT_DELAY, input_delay);
-  EEPROM.put(PT_POWER_THRESHOLD, poweroff_threshold);
-  EEPROM.put(PT_STANDALONE, standalone);
-  EEPROM.put(PT_UPS_NAME, ups_name);
+  EEPROM.put(PT_REGION, region);
+  EEPROM.put(PT_POLL, poll_interval);
   EEPROM.put(PT_SSID, ssid);
   EEPROM.put(PT_PASSW, passw);
   EEPROM.put(PT_HOST, host);
-  EEPROM.put(PT_PORT, port);
-  EEPROM.put(PT_URI, uri);
-  EEPROM.put(PT_AUTH, http_auth);
-  EEPROM.put(PT_HUSER, http_user);
-  EEPROM.put(PT_HPASSW, http_passw);
-  EEPROM.put(PT_WIFI_TRIES, wifi_tries);
-  EEPROM.put(PT_AFTER_PARTY, after_party);
+  EEPROM.put(PT_TZDATA, tzdata);
   EEPROM.put(PT_CRC, ram_crc());
   EEPROM.commit();
-#ifdef DEBUG_SERIAL
-    CONSOLE.println(msg);
-#endif
 }
 
 unsigned long ram_crc() {
   unsigned long crc = ~0L;
-  const char msg[] = "Can't allocate memory";
   const unsigned long crc_table[16] = {
     0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
     0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
@@ -38,29 +23,18 @@ unsigned long ram_crc() {
 
   if ( ! buf ){
     if ( enable_cli )
-      Serial.println(msg);
-#ifdef DEBUG_SERIAL
-    CONSOLE.println(msg);
-#endif
+      Serial.println("Can't allocate memory");
     return(0);
   }
 
   memset(buf, 0, SIZE_EEPROM + 8);
   memcpy(buf, &mark, sizeof(mark));
-  memcpy(buf+PT_INPUT_DELAY, &input_delay, sizeof(input_delay));
-  memcpy(buf+PT_POWER_THRESHOLD, &poweroff_threshold, sizeof(poweroff_threshold));
-  memcpy(buf+PT_STANDALONE, &standalone, sizeof(standalone));
-  memcpy(buf+PT_UPS_NAME, &ups_name, strlen(ups_name));
+  memcpy(buf+PT_REGION, &region, sizeof(region));
+  memcpy(buf+PT_POLL, &poll_interval, sizeof(poll_interval));
   memcpy(buf+PT_SSID, &ssid, strlen(ssid));
   memcpy(buf+PT_PASSW, &passw, strlen(passw));
   memcpy(buf+PT_HOST, &host, strlen(host));
-  memcpy(buf+PT_PORT, &port, sizeof(port));
-  memcpy(buf+PT_URI, &uri, strlen(uri));
-  memcpy(buf+PT_AUTH, &http_auth, sizeof(http_auth));
-  memcpy(buf+PT_HUSER, &http_user, strlen(http_user));
-  memcpy(buf+PT_HPASSW, &http_passw, strlen(http_passw));
-  memcpy(buf+PT_WIFI_TRIES, &wifi_tries, sizeof(wifi_tries));
-  memcpy(buf+PT_AFTER_PARTY, &after_party, sizeof(after_party));
+  memcpy(buf+PT_TZDATA, &tzdata, strlen(tzdata));
 
   for (uint16_t index = 0 ; index <= SIZE_EEPROM  ; ++index) {
     crc = crc_table[(crc ^ buf[index]) & 0x0f] ^ (crc >> 4);
@@ -74,103 +48,28 @@ unsigned long ram_crc() {
 bool eeprom_read(){
 uint16_t m = 0;
 unsigned long crc = 0;
-const char msg11[] = "EEPROM read ERROR: incorrect marker, need ";
-const char msg12[] = "H but read ";
-const char msg13[] = "H";
-const char msg2[] = "EEPROM read ERROR: incorrect crc";
-#ifdef DEBUG_SERIAL
-const char msg3[] = "EEPROM read successful";
-#endif
 
   EEPROM.get(0, m);
   if ( m != mark ) {
     if ( enable_cli ) {
-      Serial.print(msg11);Serial.print(mark,HEX);Serial.print(msg12);Serial.print(m,HEX);Serial.println(msg13);
+      Serial.print("EEPROM read ERROR: incorrect marker, need ");Serial.print(mark,HEX);Serial.print("H but read ");Serial.print(m,HEX);Serial.println("H");
     }
-#ifdef DEBUG_SERIAL
-    CONSOLE.print(msg11);CONSOLE.print(mark,HEX);CONSOLE.print(msg12);CONSOLE.print(m,HEX);CONSOLE.println(msg13);
-#endif
     return(false);
   }
 
-  EEPROM.get(PT_INPUT_DELAY, input_delay);
-  EEPROM.get(PT_POWER_THRESHOLD, poweroff_threshold);
-  EEPROM.get(PT_STANDALONE, standalone);
-  EEPROM.get(PT_UPS_NAME, ups_name);
+  EEPROM.get(PT_REGION, region);
+  EEPROM.get(PT_POLL, poll_interval);
   EEPROM.get(PT_SSID, ssid);
   EEPROM.get(PT_PASSW, passw);
   EEPROM.get(PT_HOST, host);
-  EEPROM.get(PT_PORT, port);
-  EEPROM.get(PT_URI, uri);
+  EEPROM.get(PT_TZDATA, tzdata);
   EEPROM.get(PT_CRC, crc);
-  EEPROM.get(PT_AUTH, http_auth);
-  EEPROM.get(PT_HUSER, http_user);
-  EEPROM.get(PT_HPASSW, http_passw);
-  EEPROM.get(PT_WIFI_TRIES, wifi_tries);
-  EEPROM.get(PT_AFTER_PARTY, after_party);
 
   if ( crc != ram_crc() ){
-    if ( enable_cli )
-      Serial.println(msg2);
-#ifdef DEBUG_SERIAL
-    CONSOLE.println(msg2);
-#endif
-    return(false);
-  }
-#ifdef DEBUG_SERIAL
-    CONSOLE.println(msg3);
-#endif
-  return(true);
-}
-
-bool is_conf_correct(){
-#ifdef DEBUG_SERIAL
-  const char msg1[] = "Config incorrect";
-  const char msg2[] = "Config good";
-#endif
-
-  if  ( standalone > 1 ) {
-#ifdef DEBUG_SERIAL
-    CONSOLE.println(msg1);
-#endif
-    return(false);
-  } 
-
-  if (  ( input_delay == 0 ) || ( input_delay > 60 ) ||
-        ( poweroff_threshold > 99 ) ) {
-#ifdef DEBUG_SERIAL
-    CONSOLE.println(msg1);
-#endif
-    return(false);
-  }
-
-  if  ( standalone == 0 ) {
-    if (( strlen(ssid) == 0 ) ||
-        ( strlen(passw) == 0 ) ||
-        ( strlen(host) == 0 ) ||
-        ( port == 0 ) ||
-        ( strlen(uri) == 0 ) 
-        ){
-#ifdef DEBUG_SERIAL
-      CONSOLE.println(msg1);
-#endif
-      return(false);
-    } else if ( http_auth == 1 ) {
-      if (( strlen(http_user) == 0 ) || 
-          ( strlen(http_passw) == 0 )
-         ){
-#ifdef DEBUG_SERIAL
-      CONSOLE.println(msg1);
-#endif
-      return(false);
-      }
+    if ( enable_cli ) {
+      Serial.println("EEPROM read ERROR: incorrect crc");
     }
+    return(false);
   }
-
-#ifdef DEBUG_SERIAL
-    CONSOLE.println(msg2);
-#endif
   return(true);
 }
-
-*/
