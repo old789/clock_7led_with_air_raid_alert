@@ -36,6 +36,7 @@
 // #define   TEMPERATURE_TIME    5
 // #define   CLOCK_TIME          10
 #define     TICS_SHOW_DOTS    4  // ( interval when dots on, 1/10s )
+#define     MAX_ALLOWED_INPUT 127
 
 #define   NOP __asm__ __volatile__ ("nop\n\t")
 
@@ -95,10 +96,12 @@ unsigned int tics_show_dots = 0;
 // int temper = 0;
 bool enable_cli = false;
 
+const char region_name[26][80] = { 0 };
+
 // EEPROM data
-unsigned int mark = 0x55aa55aa;
-unsigned int region = 0;
-unsigned int poll_interval = 60;  // minutes
+uint16_t mark = 0x55aa;
+uint16_t region = 0;
+uint16_t poll_interval = 60;  // minutes
 char ssid[33];
 char passw[65];
 char host[33];
@@ -112,6 +115,18 @@ char tzdata[129];
 #define PT_TZDATA       PT_HOST + sizeof(host)
 #define PT_CRC          PT_TZDATA + sizeof(tzdata)
 #define SIZE_EEPROM     PT_TZDATA + sizeof(tzdata) - 1 // PT_CRC d'not count
+
+// CLI Commands
+Command cmdPoll;
+Command cmdSsid;
+Command cmdPassw;
+Command cmdShow;
+Command cmdHost;
+Command cmdRegion;
+Command cmdTZdata;
+Command cmdSave;
+Command cmdReboot;
+Command cmdHelp;
 
 void setup() {
   //pinMode( LED_BUILTIN, OUTPUT );
