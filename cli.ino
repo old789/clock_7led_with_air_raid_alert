@@ -28,6 +28,9 @@ void SetSimpleCli(){
   cmdReboot = cli.addSingleArgCmd("reboot");
   cmdReboot.setDescription(" Reboot hard | soft");
 
+  cmdList = cli.addSingleArgCmd("list");
+  cmdList.setDescription(" Print regions list");
+
   cmdHelp = cli.addSingleArgCmd("help");
   cmdHelp.setDescription(" Get help");
 
@@ -110,6 +113,12 @@ void  loop_cli_mode(){
       Serial.print("Host = \"");Serial.print(host);Serial.println("\"");
       Serial.print("Region = \"");Serial.print(region_name[region]);Serial.println("\"");
       Serial.print("TZdata = \"");Serial.print(tzdata);Serial.println("\"");
+    } else if (c == cmdList) {
+      for ( uint8_t i = 0; i <= sizeof(region_name); i++ ) {
+        Serial.print(i);
+        Serial.print(" ");
+        Serial.println(region_name[i]);
+      }
     } else if (c == cmdReboot) {
       if ( ( argLen == 0 ) || c.getArg(0).getValue().equalsIgnoreCase("soft") ) {
         Serial.println("Reboot...");

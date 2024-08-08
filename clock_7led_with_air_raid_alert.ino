@@ -74,6 +74,27 @@ const uint8_t err[] = {
   SEG_E | SEG_G                                     // r
 };
 
+// Create an array that sets individual segments per digit to display the word "Con" ("Console")
+const uint8_t con[] = {
+  SEG_A | SEG_D | SEG_E | SEG_F,                    // C
+  SEG_C | SEG_D | SEG_E | SEG_G,                    // o
+  SEG_C | SEG_E | SEG_G                             // n
+};
+
+// Create an array that sets individual segments per digit to display the word "noA" ("no Answer')
+const uint8_t noa[] = {
+  SEG_C | SEG_E | SEG_G,                            // n
+  SEG_C | SEG_D | SEG_E | SEG_G,                    // o
+  SEG_A | SEG_B | SEG_C | SEG_E | SEG_F | SEG_G     // A
+};
+
+// Create an array that sets individual segments per digit to display the word "noC" ("not Connected')
+const uint8_t noc[] = {
+  SEG_C | SEG_E | SEG_G,                            // n
+  SEG_C | SEG_D | SEG_E | SEG_G,                    // o
+  SEG_A | SEG_D | SEG_E | SEG_F,                    // C
+};
+
 // Create an array for the temperature display
 uint8_t temp_segments[] = {
   SEG_G,                          // Minus
@@ -96,7 +117,34 @@ unsigned int tics_show_dots = 0;
 // int temper = 0;
 bool enable_cli = false;
 
-const char region_name[26][80] = { 0 };
+const char* region_name[26] = {
+  "Відключено",
+  "Вінницька область",
+  "Волинська область",
+  "Дніпропетровська область",
+  "Донецька область",
+  "Житомирська область",
+  "Закарпатська область",
+  "Запорізька область",
+  "Івано-Франківська область",
+  "Київська область",
+  "Кіровоградська область",
+  "Луганська область",
+  "Львівська область",
+  "Миколаївська область",
+  "Одеська область",
+  "Полтавська область",
+  "Рівненська область",
+  "Сумська область",
+  "Тернопільська область",
+  "Харківська область",
+  "Херсонська область",
+  "Хмельницька область",
+  "Черкаська область",
+  "Чернівецька область",
+  "Чернігівська область",
+  "м. Київ"
+};
 
 // EEPROM data
 uint16_t mark = 0x55aa;
@@ -126,6 +174,7 @@ Command cmdRegion;
 Command cmdTZdata;
 Command cmdSave;
 Command cmdReboot;
+Command cmdList;
 Command cmdHelp;
 
 void setup() {
@@ -161,11 +210,20 @@ void setup() {
   hours = rtc.hour();
   mins = rtc.minute();
 
-  // Serial.begin(9600);
-  
-  timer1.start();
-  timer2.start();
-  timer3.start();
+  if ( digitalRead(SWITCH_TO_CONSOLE_MODE) == LOW ) {
+    Serial.begin(115200);
+    delay(1000);
+    enable_cli = true;
+    display.clear();
+    display.setSegments(con,3,1);
+    Serial.println("CommandLine Mode");
+    (void)eeprom_read();
+    SetSimpleCli();
+  } else {
+    timer1.start();
+    timer2.start();
+    timer3.start();
+  }
 
 }
 
