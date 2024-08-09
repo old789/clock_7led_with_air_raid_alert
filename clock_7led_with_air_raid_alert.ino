@@ -184,6 +184,12 @@ void setup() {
   pinMode( SWITCH_TO_CONSOLE_MODE, INPUT_PULLUP );
   pinMode( SWITCH_NO_ALARM_MODE, INPUT_PULLUP );
   digitalWrite( LED_ALARM, LOW );
+#ifdef DEBUG_SERIAL
+  Serial.begin(115200);
+  delay(1000);
+  Serial.println("Debug serial mode started");
+#endif
+
   
   EEPROM.begin(1024);
   
@@ -212,10 +218,13 @@ void setup() {
   }
   hours = rtc.hour();
   mins = rtc.minute();
-
+  
+  
   if ( digitalRead(SWITCH_TO_CONSOLE_MODE) == LOW ) {
+#if not defined DEBUG_SERIAL
     Serial.begin(115200);
     delay(1000);
+#endif
     enable_cli = true;
     display.clear();
     display.setSegments(con,3,1);
@@ -223,6 +232,14 @@ void setup() {
     (void)eeprom_read();
     SetSimpleCli();
   } else {
+    if ( eeprom_read() ) { 
+      configTime(tzdata, host);
+      wifi_init();
+    } else {
+      display.clear();
+      display.setSegments(err,3,1);
+      delay(3000);
+    }
     timer1.start();
     timer2.start();
     timer3.start();
@@ -242,15 +259,6 @@ void loop_usual_mode(){
   timer1.update();
   timer2.update();
   timer3.update();
-  // nothing
-  NOP;
-  NOP;
-  NOP;
-  NOP;
-  NOP;
-  NOP;
-  NOP;
-  NOP;
 }
 
 void pulse() {
