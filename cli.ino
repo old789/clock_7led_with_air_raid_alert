@@ -92,7 +92,7 @@ void  loop_cli_mode(){
       }else{
         region = c.getArg(0).getValue().toInt();
         Serial.print("Region set to \"");
-        Serial.println(region_name[region]);
+        Serial.print(region_name[region]);
         Serial.println("\"");
       }
     } else if (c == cmdTZdata) {
@@ -114,7 +114,7 @@ void  loop_cli_mode(){
       Serial.print("Region = \"");Serial.print(region_name[region]);Serial.println("\"");
       Serial.print("TZdata = \"");Serial.print(tzdata);Serial.println("\"");
     } else if (c == cmdList) {
-      for ( uint8_t i = 0; i <= sizeof(region_name); i++ ) {
+      for ( uint8_t i = 0; i < REGION_COUNT; i++ ) {
         Serial.print(i);
         Serial.print(" ");
         Serial.println(region_name[i]);
