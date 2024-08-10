@@ -12,6 +12,7 @@
 #include <ESP8266HTTPClient.h>
 //#include <WiFiClientSecureBearSSL.h>
 #include <time.h>
+#include <coredecls.h> // optional settimeofday_cb() callback to check on server
 #include <EEPROM.h>
 #include <SimpleCLI.h>  // https://github.com/SpacehuhnTech/SimpleCLI
 #include "TickTwo.h"    // https://github.com/sstaub/TickTwo
@@ -55,12 +56,11 @@ SimpleCLI cli;
 
 void pulse();
 void update_time();
-void sync_ntp();
+void time_is_set();
 
 // Create timers object
 TickTwo timer1( pulse, 100);
 TickTwo timer2( update_time, 1000);
-TickTwo timer3( sync_ntp, 3600*1000);
 
 // Create an array that turns all segments ON
 const uint8_t allON[] = {0xff, 0xff, 0xff, 0xff};
@@ -184,13 +184,13 @@ void setup() {
   pinMode( SWITCH_TO_CONSOLE_MODE, INPUT_PULLUP );
   pinMode( SWITCH_NO_ALARM_MODE, INPUT_PULLUP );
   digitalWrite( LED_ALARM, LOW );
+
 #ifdef DEBUG_SERIAL
   Serial.begin(115200);
   delay(1000);
   Serial.println("Debug serial mode started");
 #endif
 
-  
   EEPROM.begin(1024);
   
   // Set the brightness to 5 (0=dimmest 7=brightest)
@@ -201,7 +201,7 @@ void setup() {
   display.clear();
 
   URTCLIB_WIRE.begin( SDA, SCL );
-  // rtc.set(0, 12, 18, 3, 31, 7, 24); delay(1000);
+
   if ( rtc.lostPower() ) {
     display.setSegments(err,3,1);
     rtc.lostPowerClear();
@@ -234,6 +234,7 @@ void setup() {
   } else {
     if ( eeprom_read() ) { 
       configTime(tzdata, host);
+      settimeofday_cb(time_is_set); // callback if time was sent
       wifi_init();
     } else {
       display.clear();
@@ -242,7 +243,6 @@ void setup() {
     }
     timer1.start();
     timer2.start();
-    timer3.start();
   }
 
 }
@@ -258,7 +258,6 @@ void loop() {
 void loop_usual_mode(){
   timer1.update();
   timer2.update();
-  timer3.update();
 }
 
 void pulse() {
@@ -277,24 +276,16 @@ void pulse() {
 }
 
 void update_time() {
-  rtc.refresh();
-  hours = rtc.hour();
-  mins = rtc.minute();
+  time(&now);                       // read the current time
+  localtime_r(&now, &tm);           // update the structure tm with the current time
+  hours = tm.tm_hour;
+  mins = tm.tm_min;
+//  rtc.refresh();
+//  hours = rtc.hour();
+//  mins = rtc.minute();
   tics_show_dots = TICS_SHOW_DOTS;
 }
 
-void sync_ntp() {
-}
-
-void set_rtc() {
-  rtc.refresh();
-  uint8_t sec = rtc.second();
-  uint8_t day = rtc.day();
-	uint8_t month = rtc.month();
-	uint8_t year = rtc.year();
-	uint8_t dayOfWeek = rtc.dayOfWeek();
-  rtc.set( sec, mins, hours, dayOfWeek, day, month, year );
-}
 
 /*
 void display_temp( int t ){

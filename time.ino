@@ -10,3 +10,14 @@ uint32_t sntp_update_delay_MS_rfc_not_less_than_15000 () {
   return poll_interval * 60 * 1000UL;
 }
 
+void time_is_set() {
+#ifdef DEBUG_SERIAL
+  Serial.println(F("NTP time was sent!"));
+#endif
+  //set_rtc();
+}
+
+void set_rtc() {
+  rtc.refresh();
+  rtc.set( tm.tm_sec, tm.tm_min, tm.tm_hour, tm.tm_wday, tm.tm_mday, (tm.tm_mon + 1), (tm.tm_year + 1900) );
+}
