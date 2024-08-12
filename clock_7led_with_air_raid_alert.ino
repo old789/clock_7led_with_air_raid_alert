@@ -96,6 +96,14 @@ const uint8_t noc[] = {
   SEG_A | SEG_D | SEG_E | SEG_F,                    // C
 };
 
+// Create an array that sets individual segments per digit to display '----'
+const uint8_t notime[] = {
+  SEG_G,                            // -
+  SEG_G,                            // -
+  SEG_G,                            // -
+  SEG_G                             // -
+};
+
 // Create an array for the temperature display
 uint8_t temp_segments[] = {
   SEG_G,                          // Minus
@@ -117,6 +125,8 @@ unsigned int tics_show_dots = 0;
 // uint8_t temp_enable = 0;
 // int temper = 0;
 bool enable_cli = false;
+bool is_sntp_valid = false;
+bool is_rtc_valid = false;
 
 const char* region_name[REGION_COUNT] = {
   "Відключено",               // 0
@@ -188,7 +198,7 @@ void setup() {
 #ifdef DEBUG_SERIAL
   Serial.begin(115200);
   delay(1000);
-  Serial.println("Debug serial mode started");
+  Serial.println(F("Debug serial mode started"));
 #endif
 
   EEPROM.begin(1024);
@@ -205,8 +215,10 @@ void setup() {
   if ( rtc.lostPower() ) {
     display.setSegments(err,3,1);
     rtc.lostPowerClear();
+    is_rtc_valid = false;
     delay(10000);
   } else {
+    is_rtc_valid = true;
     rtc.refresh();
     display.showNumberDec(rtc.day(),true,2,1);
     delay(1000);
@@ -216,9 +228,6 @@ void setup() {
     display.showNumberDec(2000 + rtc.year());
     delay(1000);
   }
-  hours = rtc.hour();
-  mins = rtc.minute();
-  
   
   if ( digitalRead(SWITCH_TO_CONSOLE_MODE) == LOW ) {
 #if not defined DEBUG_SERIAL
@@ -261,28 +270,35 @@ void loop_usual_mode(){
 }
 
 void pulse() {
-  if ( tics_show_dots > 0) {
-    if ( ! dots_display ) {
-      dots_display = true;
-      display.showNumberDecEx( hours * 100 + mins, 0b01000000, true, 4, 0);
+  if ( is_sntp_valid or is_rtc_valid ) {
+    if ( tics_show_dots > 0) {
+      if ( ! dots_display ) {
+        dots_display = true;
+        display.showNumberDecEx( hours * 100 + mins, 0b01000000, true, 4, 0);
+      }
+      tics_show_dots--;
+    }else{
+      if ( dots_display ) {
+        display.showNumberDecEx( hours * 100 + mins, 0, true, 4, 0);
+        dots_display = false;
+      }
     }
-    tics_show_dots--;
-  }else{
-    if ( dots_display ) {
-      display.showNumberDecEx( hours * 100 + mins, 0, true, 4, 0);
-      dots_display = false;
-    }
+  } else {
+    display.setSegments(notime);
   }
 }
 
 void update_time() {
-  time(&now);                       // read the current time
-  localtime_r(&now, &tm);           // update the structure tm with the current time
-  hours = tm.tm_hour;
-  mins = tm.tm_min;
-//  rtc.refresh();
-//  hours = rtc.hour();
-//  mins = rtc.minute();
+  if ( is_sntp_valid ) {
+    time(&now);                       // read the current time
+    localtime_r(&now, &tm);           // update the structure tm with the current time
+    hours = tm.tm_hour;
+    mins = tm.tm_min;
+  } else if ( is_rtc_valid ) { 
+      rtc.refresh();
+      hours = rtc.hour();
+      mins = rtc.minute();
+  }
   tics_show_dots = TICS_SHOW_DOTS;
 }
 

@@ -1,4 +1,5 @@
 // https://werner.rothschopf.net/202011_arduino_esp8266_ntp_en.htm
+// https://werner.rothschopf.net/microcontroller/202112_arduino_esp_ntp_rtc_en.htm
 
 // Change Startup Delay for NTP
 uint32_t sntp_startup_delay_MS_rfc_not_less_than_60000 () {
@@ -14,6 +15,7 @@ void time_is_set() {
 #ifdef DEBUG_SERIAL
   Serial.println(F("NTP time was sent!"));
 #endif
+  is_sntp_valid = true;
   //set_rtc();
 }
 
