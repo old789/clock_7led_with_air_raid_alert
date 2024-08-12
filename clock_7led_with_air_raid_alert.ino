@@ -39,6 +39,7 @@
 #define     TICS_SHOW_DOTS    4  // ( interval when dots on, 1/10s )
 #define     MAX_ALLOWED_INPUT 127
 #define     REGION_COUNT      26
+#define     STARUP_DELAY_FOR_NTP  5 // minutes
 
 #define   NOP __asm__ __volatile__ ("nop\n\t")
 

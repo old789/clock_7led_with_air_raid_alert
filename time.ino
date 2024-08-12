@@ -3,7 +3,7 @@
 
 // Change Startup Delay for NTP
 uint32_t sntp_startup_delay_MS_rfc_not_less_than_60000 () {
-  return 60000UL; // 60s
+  return STARUP_DELAY_FOR_NTP * 60 * 1000UL; 
 }
 
 // Change NTP Polling Interval
