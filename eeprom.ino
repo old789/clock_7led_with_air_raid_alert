@@ -23,7 +23,7 @@ unsigned long ram_crc() {
 
   if ( ! buf ){
     if ( enable_cli )
-      Serial.println("Can't allocate memory");
+      Serial.println(F("Can't allocate memory"));
     return(0);
   }
 
@@ -52,7 +52,7 @@ unsigned long crc = 0;
   EEPROM.get(0, m);
   if ( m != mark ) {
     if ( enable_cli ) {
-      Serial.print("EEPROM read ERROR: incorrect marker, need ");Serial.print(mark,HEX);Serial.print("H but read ");Serial.print(m,HEX);Serial.println("H");
+      Serial.print(F("EEPROM read ERROR: incorrect marker, need "));Serial.print(mark,HEX);Serial.print(F("H but read "));Serial.print(m,HEX);Serial.println("H");
     }
     return(false);
   }
@@ -67,7 +67,7 @@ unsigned long crc = 0;
 
   if ( crc != ram_crc() ){
     if ( enable_cli ) {
-      Serial.println("EEPROM read ERROR: incorrect crc");
+      Serial.println(F("EEPROM read ERROR: incorrect crc"));
     }
     return(false);
   }

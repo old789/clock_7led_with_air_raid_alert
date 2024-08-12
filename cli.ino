@@ -91,7 +91,7 @@ void  loop_cli_mode(){
         Serial.println(emptyArg);
       }else{
         region = c.getArg(0).getValue().toInt();
-        Serial.print("Region set to \"");
+        Serial.print(F("Region set to \""));
         Serial.print(region_name[region]);
         Serial.println("\"");
       }
@@ -105,14 +105,14 @@ void  loop_cli_mode(){
       }
     } else if (c == cmdSave) {
       eeprom_save();
-      Serial.println("Configuration saved to EEPROM");
+      Serial.println(F("Configuration saved to EEPROM"));
     } else if (c == cmdShow) {
-      Serial.print("Poll interval = \"");Serial.print(poll_interval);Serial.println("\"");
-      Serial.print("WiFi SSID = \"");Serial.print(ssid);Serial.println("\"");
-      Serial.print("WiFi password = \"");Serial.print(passw);Serial.println("\"");
-      Serial.print("Host = \"");Serial.print(host);Serial.println("\"");
-      Serial.print("Region = \"");Serial.print(region_name[region]);Serial.println("\"");
-      Serial.print("TZdata = \"");Serial.print(tzdata);Serial.println("\"");
+      Serial.print(F("Poll interval = \""));Serial.print(poll_interval);Serial.println("\"");
+      Serial.print(F("WiFi SSID = \""));Serial.print(ssid);Serial.println("\"");
+      Serial.print(F("WiFi password = \""));Serial.print(passw);Serial.println("\"");
+      Serial.print(F("Host = \""));Serial.print(host);Serial.println("\"");
+      Serial.print(F("Region = \""));Serial.print(region_name[region]);Serial.println("\"");
+      Serial.print(F("TZdata = \""));Serial.print(tzdata);Serial.println("\"");
     } else if (c == cmdList) {
       for ( uint8_t i = 0; i < REGION_COUNT; i++ ) {
         Serial.print(i);
@@ -121,18 +121,18 @@ void  loop_cli_mode(){
       }
     } else if (c == cmdReboot) {
       if ( ( argLen == 0 ) || c.getArg(0).getValue().equalsIgnoreCase("soft") ) {
-        Serial.println("Reboot...");
+        Serial.println(F("Reboot..."));
         delay(3000);
         ESP.restart();
       }else if ( c.getArg(0).getValue().equalsIgnoreCase("hard") ){
-        Serial.println("Reset...");
+        Serial.println(F("Reset..."));
         delay(3000);
         ESP.reset();
       }else{
-        Serial.println("Unknown argument, allowed only \"hard\" or \"soft\"");
+        Serial.println(F("Unknown argument, allowed only \"hard\" or \"soft\""));
       }
     } else if (c == cmdHelp) {
-      Serial.println("Help:");
+      Serial.println(F("Help:"));
       Serial.println(cli.toString());
     }
 

@@ -1,8 +1,8 @@
 void wifi_init(){
 #ifdef DBG_WIFI
-  Serial.print("Connecting to ");
+  Serial.print(F("Connecting to "));
   Serial.print(ssid);
-  Serial.println(" ...");
+  Serial.println(F(" ..."));
 #endif
 
   WiFi.mode(WIFI_STA);
@@ -22,7 +22,7 @@ void wifi_init(){
       display.setSegments(noc,3,1);
 #ifdef DBG_WIFI
       Serial.println('\n');
-      Serial.println("Connection d'not established!");
+      Serial.println(F("Connection d'not established!"));
 #endif
       delay(3000);
       // ESP.restart();
@@ -35,8 +35,8 @@ void wifi_init(){
 
 #ifdef DBG_WIFI
   Serial.println('\n');
-  Serial.println("Connection established!");
-  Serial.print("IP address: ");Serial.println(WiFi.localIP());
-  Serial.print("RSSI: ");Serial.println(WiFi.RSSI());
+  Serial.println(F("Connection established!"));
+  Serial.print(F("IP address: "));Serial.println(WiFi.localIP());
+  Serial.print(F("RSSI: "));Serial.println(WiFi.RSSI());
 #endif
 }

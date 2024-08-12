@@ -41,7 +41,7 @@
 #define     REGION_COUNT      26
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
 
-#define   NOP __asm__ __volatile__ ("nop\n\t")
+//#define   NOP __asm__ __volatile__ ("nop\n\t")
 
 // Create a display object of type TM1637Display
 TM1637Display display = TM1637Display(CLK, DIO);
@@ -251,7 +251,7 @@ void setup() {
     enable_cli = true;
     display.clear();
     display.setSegments(con,3,1);
-    Serial.println("CommandLine Mode");
+    Serial.println(F("CommandLine Mode"));
     (void)eeprom_read();
     SetSimpleCli();
   } else {
