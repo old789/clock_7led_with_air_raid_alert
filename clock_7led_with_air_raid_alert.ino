@@ -104,6 +104,19 @@ const uint8_t notime[] = {
   SEG_G                             // -
 };
 
+// Create an array that sets individual segments per digit to display '^v^v'
+const uint8_t wave[2][4] = {{
+  SEG_F | SEG_A | SEG_B,                            // ^
+  SEG_C | SEG_D | SEG_E,                            // v
+  SEG_F | SEG_A | SEG_B,                            // ^
+  SEG_C | SEG_D | SEG_E                             // v
+},{
+  SEG_C | SEG_D | SEG_E,                            // v
+  SEG_F | SEG_A | SEG_B,                            // ^
+  SEG_C | SEG_D | SEG_E,                            // v
+  SEG_F | SEG_A | SEG_B                             // ^
+}};
+
 // Create an array for the temperature display
 uint8_t temp_segments[] = {
   SEG_G,                          // Minus

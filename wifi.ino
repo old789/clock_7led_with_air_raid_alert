@@ -8,6 +8,7 @@ void wifi_init(){
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, passw);             // Connect to the network
 
+  uint8_t w = 0;
   uint16_t i = 0;
   while (WiFi.status() != WL_CONNECTED) { // Wait for the Wi-Fi to connect
     delay(1000);
@@ -15,11 +16,17 @@ void wifi_init(){
 #ifdef DBG_WIFI
     Serial.print(i); Serial.print(' ');
 #endif
-    if ( i > 300 ) {  // if don't connect then restart
+    display.setSegments(wave[w^=1]);
+    if ( i > 300 ) {
       display.clear();
       display.setSegments(noc,3,1);
+#ifdef DBG_WIFI
+      Serial.println('\n');
+      Serial.println("Connection d'not established!");
+#endif
       delay(3000);
-      ESP.restart();
+      // ESP.restart();
+      return;
     }
   }
 
