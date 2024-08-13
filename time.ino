@@ -48,6 +48,32 @@ void time_is_set() {
   Serial.println(F("NTP time was sent!"));
 #endif
   is_sntp_valid = true;
+  time(&last_sntp_sync);
   set_rtc();
 }
 
+void check_is_sntp_valid(){
+  if ( is_sntp_valid ) {
+    time(&now);
+#ifdef DEBUG_SERIAL
+  Serial.print(F("Time now: "));
+  Serial.print((uint64_t)now);
+  Serial.print(F(" last time got NTP: "));
+  Serial.print((uint64_t)last_sntp_sync);
+  Serial.print(F(" seconds ago: "));
+  Serial.println( (now - last_sntp_sync) );
+#endif
+    if ( ( now - last_sntp_sync ) > PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID ) {
+      is_sntp_valid = false;
+#ifdef DEBUG_SERIAL
+      Serial.println(F("NTP time is non valid"));
+#endif
+    }
+  }
+#ifdef DEBUG_SERIAL
+    else {
+      Serial.println(F("Checking for a valid NTP time was discarded - time is already invalid"));
+    }
+#endif
+
+}

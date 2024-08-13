@@ -40,6 +40,7 @@
 #define     MAX_ALLOWED_INPUT 127
 #define     REGION_COUNT      26
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
+#define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
 
 //#define   NOP __asm__ __volatile__ ("nop\n\t")
 
@@ -57,11 +58,14 @@ SimpleCLI cli;
 
 void pulse();
 void update_time();
+void check_is_sntp_valid();
 void time_is_set();
 
 // Create timers object
-TickTwo timer1( pulse, 100);
-TickTwo timer2( update_time, 1000);
+TickTwo timer1( pulse, 100);  // 0.1s
+TickTwo timer2( update_time, 1000);   // 1s
+//TickTwo timer3( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
+TickTwo timer3( check_is_sntp_valid, 20 * 60 * 1000);  // test
 
 // Create an array that turns all segments ON
 const uint8_t allON[] = {0xff, 0xff, 0xff, 0xff};
@@ -128,8 +132,9 @@ uint8_t temp_segments[] = {
 
 time_t now;                       // this are the seconds since Epoch (1970) - UTC
 tm tm;                            // the structure tm holds time information in a more convenient way
+time_t last_sntp_sync = 0;
 
-uint8_t secs = 0;
+//uint8_t secs = 0;
 uint8_t mins = 0;
 uint8_t hours = 0;
 
@@ -266,6 +271,7 @@ void setup() {
     }
     timer1.start();
     timer2.start();
+    timer3.start();
   }
 
 }
@@ -281,6 +287,7 @@ void loop() {
 void loop_usual_mode(){
   timer1.update();
   timer2.update();
+  timer3.update();
 }
 
 void pulse() {
