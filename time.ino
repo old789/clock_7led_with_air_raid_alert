@@ -40,6 +40,7 @@ void set_rtc() {
     Serial.println(tm.tm_sec);
 #endif
   }
+  is_rtc_valid = true;
 }
 
 void time_is_set() {
