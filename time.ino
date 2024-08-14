@@ -12,9 +12,101 @@ uint32_t sntp_update_delay_MS_rfc_not_less_than_15000 () {
 }
 
 void set_rtc() {
+  bool no_need_rtc_set = true;
+#ifdef DEBUG_SERIAL
+  char stmp[128] = { 0 };
+#endif
   rtc.refresh();
   time(&now);
   localtime_r(&now, &tm);
+
+#ifdef DEBUG_SERIAL
+  memset(stmp, 0, sizeof(stmp));
+  sprintf(stmp, "Compare seconds: sys %u rtc %u", tm.tm_sec, rtc.second());
+  Serial.println(stmp);
+#endif
+  if ( abs( tm.tm_sec - rtc.second() ) > 9 ) {
+    no_need_rtc_set = false;
+#ifdef DEBUG_SERIAL
+  Serial.println(F("Seconds are different, need the correction"));
+#endif
+  }
+
+#ifdef DEBUG_SERIAL
+  memset(stmp, 0, sizeof(stmp));
+  sprintf(stmp, "Compare minutes: sys %u rtc %u", tm.tm_min, rtc.minute());
+  Serial.println(stmp);
+#endif
+  if ( tm.tm_min != rtc.minute() ) {
+    no_need_rtc_set = false;
+#ifdef DEBUG_SERIAL
+  Serial.println(F("Minutes are different, need the correction"));
+#endif
+  }
+
+#ifdef DEBUG_SERIAL
+  memset(stmp, 0, sizeof(stmp));
+  sprintf(stmp, "Compare hours: sys %u rtc %u", tm.tm_hour, rtc.hour());
+  Serial.println(stmp);
+#endif
+  if ( tm.tm_hour != rtc.hour() ) {
+    no_need_rtc_set = false;
+#ifdef DEBUG_SERIAL
+  Serial.println(F("Hours are different, need the correction"));
+#endif
+  }
+
+#ifdef DEBUG_SERIAL
+  memset(stmp, 0, sizeof(stmp));
+  sprintf(stmp, "Compare week days: sys %u rtc %u", ( tm.tm_wday + 1 ), rtc.dayOfWeek());
+  Serial.println(stmp);
+#endif
+  if ( ( tm.tm_wday + 1 ) != rtc.dayOfWeek() ) {
+    no_need_rtc_set = false;
+#ifdef DEBUG_SERIAL
+  Serial.println(F("Week days are different, need the correction"));
+#endif
+  }
+
+#ifdef DEBUG_SERIAL
+  memset(stmp, 0, sizeof(stmp));
+  sprintf(stmp, "Compare days: sys %u rtc %u", tm.tm_mday, rtc.day());
+  Serial.println(stmp);
+#endif
+  if ( tm.tm_mday != rtc.day() ) {
+    no_need_rtc_set = false;
+#ifdef DEBUG_SERIAL
+  Serial.println(F("Days are different, need the correction"));
+#endif
+  }
+
+#ifdef DEBUG_SERIAL
+  memset(stmp, 0, sizeof(stmp));
+  sprintf(stmp, "Compare months: sys %u rtc %u", ( tm.tm_mon + 1 ), rtc.month());
+  Serial.println(stmp);
+#endif
+  if ( ( tm.tm_mon + 1 ) != rtc.month() ) {
+    no_need_rtc_set = false;
+#ifdef DEBUG_SERIAL
+  Serial.println(F("Months are different, need the correction"));
+#endif
+  }
+
+#ifdef DEBUG_SERIAL
+  memset(stmp, 0, sizeof(stmp));
+  sprintf(stmp, "Compare years: sys %u rtc %u", ( tm.tm_year - 100 ), rtc.year());
+  Serial.println(stmp);
+#endif
+  if ( ( tm.tm_year - 100 ) != rtc.year() ) {
+    no_need_rtc_set = false;
+#ifdef DEBUG_SERIAL
+  Serial.println(F("Years are different, need the correction"));
+#endif
+  }
+
+/*
+ * This is better code but without debugging
+ *
   if (  abs( tm.tm_sec - rtc.second() ) > 9 or
         tm.tm_min != rtc.minute() or
         tm.tm_hour != rtc.hour() or
@@ -22,22 +114,16 @@ void set_rtc() {
         tm.tm_mday != rtc.day() or
         ( tm.tm_mon + 1 ) != rtc.month() or
         (tm.tm_year - 100) != rtc.year() ) {
+*/
+  if ( ! no_need_rtc_set ) {
     rtc.set( tm.tm_sec, tm.tm_min, tm.tm_hour, (tm.tm_wday + 1), tm.tm_mday, (tm.tm_mon + 1), (tm.tm_year - 100) );
 #ifdef DEBUG_SERIAL
-    Serial.print(F("RTC time was set: "));
-    Serial.print( (tm.tm_wday + 1) );
-    Serial.print(", ");
-    Serial.print(tm.tm_mday);
-    Serial.print("/");
-    Serial.print( (tm.tm_mon + 1) );
-    Serial.print("/");
-    Serial.print( (tm.tm_year - 100) );
-    Serial.print(" ");
-    Serial.print(tm.tm_hour);
-    Serial.print(":");
-    Serial.print(tm.tm_min);
-    Serial.print(":");
-    Serial.println(tm.tm_sec);
+    memset(stmp, 0, sizeof(stmp));
+    sprintf(stmp, "RTC time was set: %u, %u/%u/%u %u:%u:%u", 
+      (tm.tm_wday + 1), tm.tm_mday, (tm.tm_mon + 1), (tm.tm_year - 100), tm.tm_hour, tm.tm_min, tm.tm_sec);
+    Serial.println(stmp);
+  } else {
+    Serial.println(F("Everything is Ok, rtc no need the correction"));
 #endif
   }
   is_rtc_valid = true;
