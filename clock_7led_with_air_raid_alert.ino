@@ -33,10 +33,9 @@
 #define   SWITCH_TO_CONSOLE_MODE  D1
 #define   SWITCH_NO_ALARM_MODE    D2
 
-// Define intervals to display temperature and time 
-// #define   TEMPERATURE_TIME    5
-// #define   CLOCK_TIME          10
 #define     TICS_SHOW_DOTS    4  // ( interval when dots on, 1/10s )
+#define     TICS_SHOW_ERR    20  // ( interval when show error sign, 1/10s )
+#define     TICS_SHOW_TEMPERATURE    20  // ( interval when show temperature, 1/10s )
 #define     MAX_ALLOWED_INPUT 127
 #define     REGION_COUNT      26
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
@@ -58,14 +57,16 @@ SimpleCLI cli;
 
 void pulse();
 void update_time();
+void check_system();
 void check_is_sntp_valid();
 void time_is_set();
 
 // Create timers object
 TickTwo timer1( pulse, 100);  // 0.1s
 TickTwo timer2( update_time, 1000);   // 1s
-//TickTwo timer3( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
-TickTwo timer3( check_is_sntp_valid, 20 * 60 * 1000);  // test
+TickTwo timer3( check_system, 30 * 1000 );  // 30s
+//TickTwo timer4( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
+TickTwo timer4( check_is_sntp_valid, 20 * 60 * 1000);  // test
 
 // Create an array that turns all segments ON
 const uint8_t allON[] = {0xff, 0xff, 0xff, 0xff};
@@ -99,6 +100,13 @@ const uint8_t noc[] = {
   SEG_C | SEG_E | SEG_G,                            // n
   SEG_C | SEG_D | SEG_E | SEG_G,                    // o
   SEG_A | SEG_D | SEG_E | SEG_F,                    // C
+};
+
+// Create an array that sets individual segments per digit to display the word "not" ("not time')
+const uint8_t noT[] = {
+  SEG_C | SEG_E | SEG_G,                            // n
+  SEG_C | SEG_D | SEG_E | SEG_G,                    // o
+  SEG_D | SEG_E | SEG_F | SEG_G,                    // t
 };
 
 // Create an array that sets individual segments per digit to display '----'
@@ -139,13 +147,19 @@ uint8_t mins = 0;
 uint8_t hours = 0;
 
 bool dots_display = false;
-bool temp_display = false;
 unsigned int tics_show_dots = 0;
-// uint8_t temp_enable = 0;
-// int temper = 0;
+unsigned int tics_show_not = 0;
+unsigned int tics_show_noa = 0;
+unsigned int tics_show_noc = 0;
+unsigned int tics_show_t = 0;
 bool enable_cli = false;
 bool is_sntp_valid = false;
 bool is_rtc_valid = false;
+bool is_air_raid_api_ok = false;
+bool show_noa = false;
+bool show_noc = false;
+bool show_not = false;
+bool show_t = false;
 
 const char* region_name[REGION_COUNT] = {
   "Відключено",               // 0
@@ -272,6 +286,7 @@ void setup() {
     timer1.start();
     timer2.start();
     timer3.start();
+    timer4.start();
   }
 
 }
@@ -288,9 +303,26 @@ void loop_usual_mode(){
   timer1.update();
   timer2.update();
   timer3.update();
+  timer4.update();
 }
 
 void pulse() {
+
+  // show "not Connected" to WiFi error
+  if ( show_info( &tics_show_noc, noc, &show_noc )) {
+    return;
+  }
+  
+  // show air raid API "not Answered" error
+  if ( show_info( &tics_show_noa, noa, &show_noa )) {
+    return;
+  }
+  
+  // show no NTP time error
+  if ( show_info( &tics_show_not, noT, &show_not )) {
+    return;
+  }
+  
   if ( is_sntp_valid or is_rtc_valid ) {
     if ( tics_show_dots > 0) {
       if ( ! dots_display ) {
@@ -323,6 +355,33 @@ void update_time() {
   tics_show_dots = TICS_SHOW_DOTS;
 }
 
+void check_system() {
+  if ( ! is_sntp_valid ) {
+    tics_show_not = TICS_SHOW_ERR;
+  }
+  if ( WiFi.status() != WL_CONNECTED ) {
+    tics_show_noc = TICS_SHOW_ERR;
+  }
+  if ( ! is_air_raid_api_ok ) {
+    tics_show_noa = TICS_SHOW_ERR;
+  }
+  // tics_show_t = TICS_SHOW_TEMPERATURE
+}
+
+bool show_info( unsigned int *tics, const uint8_t *info, bool *show ) {
+  if ( *tics > 0 ) {
+    if ( ! *show ) {
+      display.clear();
+      display.setSegments(info,3,1);
+      *show = true;
+    }
+    (*tics)--;
+    return(true);
+  } else if ( *show ) {
+    *show = false;
+  }
+  return(false);
+}
 
 /*
 void display_temp( int t ){
