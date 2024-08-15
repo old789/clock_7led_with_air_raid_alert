@@ -12,14 +12,14 @@ uint32_t sntp_update_delay_MS_rfc_not_less_than_15000 () {
 }
 
 bool compare_date_part(unsigned int t1, unsigned int t2, uint8_t ds){
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
   char stmp[128] = { 0 };
   const char* descr[4] = { "week day", "day", "month", "year" };
   sprintf(stmp, "compare %ss: sys %u rtc %u", descr[ds], t1, t2);
   Serial.println(stmp);
 #endif
   if ( t1 != t2 ) {
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
     memset(stmp, 0, sizeof(stmp));
     sprintf(stmp, "%ss are different, a RTC needs the correction", descr[ds]);
     Serial.println(stmp);
@@ -35,7 +35,7 @@ void set_rtc() {
   unsigned int t_rtc;
   int t_dif;
   
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
   char stmp[128] = { 0 };
 #endif
   rtc.refresh();
@@ -46,7 +46,7 @@ void set_rtc() {
   t_rtc = rtc.second() + 60 * rtc.minute() + 3600 * rtc.hour();
   t_dif = t_sys - t_rtc;
 
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
   // memset(stmp, 0, sizeof(stmp));
   sprintf(stmp, "compare time: sys %u:%u:%u (%u) rtc %u:%u:%u (%u)", 
     tm.tm_hour, tm.tm_min, tm.tm_sec, t_sys, rtc.hour(),rtc.minute(), rtc.second(), t_rtc);
@@ -54,7 +54,7 @@ void set_rtc() {
 #endif
   if ( abs( t_dif ) > 9 ) {
     no_need_rtc_set = false;
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
     memset(stmp, 0, sizeof(stmp));
     sprintf(stmp, "time difference is %ds, rtc needs the correction", t_dif);
     Serial.println(stmp);
@@ -69,7 +69,7 @@ void set_rtc() {
   
   if ( ! no_need_rtc_set ) {
     rtc.set( tm.tm_sec, tm.tm_min, tm.tm_hour, (tm.tm_wday + 1), tm.tm_mday, (tm.tm_mon + 1), (tm.tm_year - 100) );
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
     memset(stmp, 0, sizeof(stmp));
     sprintf(stmp, "a RTC time was set: %u, %u/%u/%u %u:%u:%u", 
       (tm.tm_wday + 1), tm.tm_mday, (tm.tm_mon + 1), (tm.tm_year - 100), tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -82,7 +82,7 @@ void set_rtc() {
 }
 
 void time_is_set() {
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
   Serial.println(F("NTP time was sent!"));
 #endif
   is_sntp_valid = true;
@@ -93,7 +93,7 @@ void time_is_set() {
 void check_is_sntp_valid(){
   if ( is_sntp_valid ) {
     time(&now);
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
   Serial.print(F("Time now: "));
   Serial.print((uint64_t)now);
   Serial.print(F(" last time got NTP: "));
@@ -103,11 +103,11 @@ void check_is_sntp_valid(){
 #endif
     if ( ( now - last_sntp_sync ) > PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID ) {
       is_sntp_valid = false;
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
       Serial.println(F("NTP time is non valid"));
 #endif
     }
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_TIME
   } else {
       Serial.println(F("Checking for a valid NTP time was discarded - time is already invalid"));
 #endif

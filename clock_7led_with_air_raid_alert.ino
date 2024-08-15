@@ -1,7 +1,12 @@
 #define DEBUG_SERIAL  // because just "DEBUG" defined in PZEM004Tv30.h ( legacy :)
 #define DBG_WIFI    // because "DEBUG_WIFI" defined in a WiFiClient library
+#define DEBUG_TIME
 
 #if defined ( DBG_WIFI ) && not defined ( DEBUG_SERIAL )
+#define DEBUG_SERIAL
+#endif
+
+#if defined ( DEBUG_TIME ) && not defined ( DEBUG_SERIAL )
 #define DEBUG_SERIAL
 #endif
 
@@ -41,6 +46,8 @@
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
 #define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
 
+#define     AIR_RAID_API_URL    "http://ubilling.net.ua/aerialalerts/"
+
 //#define   NOP __asm__ __volatile__ ("nop\n\t")
 
 // Create a display object of type TM1637Display
@@ -57,6 +64,7 @@ SimpleCLI cli;
 
 void pulse();
 void update_time();
+void check_air_raid_api();
 void check_system();
 void check_is_sntp_valid();
 void time_is_set();
@@ -64,9 +72,10 @@ void time_is_set();
 // Create timers object
 TickTwo timer1( pulse, 100);  // 0.1s
 TickTwo timer2( update_time, 1000);   // 1s
-TickTwo timer3( check_system, 30 * 1000 );  // 30s
-//TickTwo timer4( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
-TickTwo timer4( check_is_sntp_valid, 20 * 60 * 1000);  // test
+TickTwo timer3( check_air_raid_api, 5 * 1000);   // 5s
+TickTwo timer4( check_system, 30 * 1000 );  // 30s
+//TickTwo timer5( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
+TickTwo timer5( check_is_sntp_valid, 20 * 60 * 1000);  // test
 
 // Create an array that turns all segments ON
 const uint8_t allON[] = {0xff, 0xff, 0xff, 0xff};
@@ -287,6 +296,7 @@ void setup() {
     timer2.start();
     timer3.start();
     timer4.start();
+    timer5.start();
   }
 
 }
@@ -304,6 +314,7 @@ void loop_usual_mode(){
   timer2.update();
   timer3.update();
   timer4.update();
+  timer5.update();
 }
 
 void pulse() {
@@ -381,6 +392,58 @@ bool show_info( unsigned int *tics, const uint8_t *info, bool *show ) {
     *show = false;
   }
   return(false);
+}
+
+void check_air_raid_api(){
+  is_air_raid_api_ok = false;
+
+  if ( WiFi.status() != WL_CONNECTED ) {
+#ifdef DEBUG_SERIAL
+    Serial.println("[HTTP] WiFi not connected");
+#endif
+    return;
+  }
+
+  WiFiClient client;
+  HTTPClient http;
+
+#ifdef DEBUG_SERIAL
+  Serial.println("[HTTP] begin...");
+#endif
+
+  if ( ! http.begin(client, AIR_RAID_API_URL)) {
+#ifdef DEBUG_SERIAL
+    Serial.println("[HTTP] Unable to connect");
+#endif
+    return;
+  }
+
+  
+#ifdef DEBUG_SERIAL
+  Serial.println("[HTTP] GET...");
+#endif
+  // start connection and send HTTP header
+  int httpCode = http.GET();
+#ifdef DEBUG_SERIAL
+  Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+#endif
+  // httpCode will be negative on error
+  if (httpCode < 0) {
+    // HTTP header has been send and Server response header has been handled
+#ifdef DEBUG_SERIAL
+    Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+#endif
+    return;
+  }
+  // file found at server
+  if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+    String payload = http.getString();
+    //Serial.println(payload);
+    is_air_raid_api_ok = true;
+  }
+
+  http.end();
+  return;
 }
 
 /*
