@@ -22,6 +22,7 @@
 #include <SimpleCLI.h>  // https://github.com/SpacehuhnTech/SimpleCLI
 #include "TickTwo.h"    // https://github.com/sstaub/TickTwo
 // #include <microDS18B20.h>   // https://github.com/GyverLibs/microDS18B20/
+#include <ArduinoJson.h>       // https://arduinojson.org/
 
 // Define the 4 digits display connections pins
 #define CLK D5
@@ -395,6 +396,11 @@ bool show_info( unsigned int *tics, const uint8_t *info, bool *show ) {
 }
 
 void check_air_raid_api(){
+  if ( digitalRead(SWITCH_NO_ALARM_MODE) == LOW ) {
+    is_air_raid_api_ok = true;
+    return;
+  }
+  
   is_air_raid_api_ok = false;
 
   if ( WiFi.status() != WL_CONNECTED ) {
@@ -406,6 +412,11 @@ void check_air_raid_api(){
 
   WiFiClient client;
   HTTPClient http;
+  JsonDocument jroot;
+  JsonDocument filter;
+  bool alert_state = true;
+
+  filter["states"][region_name[region]]["alertnow"] = true;
 
 #ifdef DEBUG_SERIAL
   Serial.println("[HTTP] begin...");
@@ -417,28 +428,52 @@ void check_air_raid_api(){
 #endif
     return;
   }
-
-  
 #ifdef DEBUG_SERIAL
   Serial.println("[HTTP] GET...");
 #endif
-  // start connection and send HTTP header
   int httpCode = http.GET();
 #ifdef DEBUG_SERIAL
-  Serial.printf("[HTTP] GET... code: %d\n", httpCode);
+  Serial.printf("[HTTP] GET... code: %d\r\n", httpCode);
 #endif
-  // httpCode will be negative on error
+
   if (httpCode < 0) {
-    // HTTP header has been send and Server response header has been handled
 #ifdef DEBUG_SERIAL
-    Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+    Serial.printf("[HTTP] GET... failed, error: %s\r\n", http.errorToString(httpCode).c_str());
 #endif
     return;
   }
-  // file found at server
+  
   if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
     String payload = http.getString();
-    //Serial.println(payload);
+    
+    Serial.printf("[HTTP] Got %dB payload\r\n",payload.length());
+
+    deserializeJson(jroot, payload, DeserializationOption::Filter(filter));
+
+    Serial.println("[HTTP] JSON deserialized");
+
+/*
+    DeserializationError error = deserializeJson(jroot, payload);
+    if (error) {
+#ifdef DEBUG_SERIAL
+      Serial.printf("[HTTP] deserializeJson() failed: %s\r\n", error.f_str());
+#endif
+      return;
+    }
+*/
+    Serial.println("[HTTP] Get alert state");
+
+    alert_state = jroot["states"][region_name[region]]["alertnow"];
+    
+    // serializeJsonPretty(jroot, Serial);
+
+    // Serial.println("Got alert state");
+    
+    if ( alert_state ) { 
+      Serial.println("Alert!!!");
+    } else {
+      Serial.println("Alert cancelled");
+    }
     is_air_raid_api_ok = true;
   }
 
