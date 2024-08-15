@@ -13,6 +13,10 @@ uint32_t sntp_update_delay_MS_rfc_not_less_than_15000 () {
 
 void set_rtc() {
   bool no_need_rtc_set = true;
+  unsigned int t_sys;
+  unsigned int t_rtc;
+  int t_dif;
+  
 #ifdef DEBUG_SERIAL
   char stmp[128] = { 0 };
 #endif
@@ -20,39 +24,24 @@ void set_rtc() {
   time(&now);
   localtime_r(&now, &tm);
 
-#ifdef DEBUG_SERIAL
-  memset(stmp, 0, sizeof(stmp));
-  sprintf(stmp, "Compare seconds: sys %u rtc %u", tm.tm_sec, rtc.second());
-  Serial.println(stmp);
-#endif
-  if ( abs( tm.tm_sec - rtc.second() ) > 9 ) {
-    no_need_rtc_set = false;
-#ifdef DEBUG_SERIAL
-  Serial.println(F("Seconds are different, need the correction"));
-#endif
-  }
+  t_sys = tm.tm_sec + 60 * tm.tm_min + 3600 * tm.tm_hour;
+  t_rtc = rtc.second() + 60 * rtc.minute() + 3600 * rtc.hour();
+  t_dif = t_sys - t_rtc;
 
 #ifdef DEBUG_SERIAL
   memset(stmp, 0, sizeof(stmp));
-  sprintf(stmp, "Compare minutes: sys %u rtc %u", tm.tm_min, rtc.minute());
+  sprintf(stmp, "Compare time: sys %u:%u:%u (%u) rtc %u:%u:%u (%u)", 
+    tm.tm_hour, tm.tm_min, tm.tm_sec, t_sys, rtc.hour(),rtc.minute(), rtc.second(), t_rtc);
   Serial.println(stmp);
 #endif
-  if ( tm.tm_min != rtc.minute() ) {
+  if ( abs( t_dif ) > 9 ) {
     no_need_rtc_set = false;
 #ifdef DEBUG_SERIAL
-  Serial.println(F("Minutes are different, need the correction"));
-#endif
-  }
-
-#ifdef DEBUG_SERIAL
-  memset(stmp, 0, sizeof(stmp));
-  sprintf(stmp, "Compare hours: sys %u rtc %u", tm.tm_hour, rtc.hour());
-  Serial.println(stmp);
-#endif
-  if ( tm.tm_hour != rtc.hour() ) {
-    no_need_rtc_set = false;
-#ifdef DEBUG_SERIAL
-  Serial.println(F("Hours are different, need the correction"));
+    memset(stmp, 0, sizeof(stmp));
+    sprintf(stmp, "Time difference is %ds, rtc needs the correction", t_dif);
+    Serial.println(stmp);
+  } else {
+    Serial.println(F("Time is Ok, rtc d'not need the correction"));
 #endif
   }
 
