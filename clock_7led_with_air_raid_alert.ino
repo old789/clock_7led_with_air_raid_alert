@@ -51,6 +51,7 @@
 #define     REGION_COUNT      26
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
 #define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
+#define     DEBOUNCE_DELAY  20  // ( interval after turn switch 
 
 #define     AIR_RAID_API_URL    "http://ubilling.net.ua/aerialalerts/"
 
@@ -167,6 +168,7 @@ unsigned int tics_show_not = 0;
 unsigned int tics_show_noa = 0;
 unsigned int tics_show_noc = 0;
 unsigned int tics_show_t = 0;
+unsigned int tics_debounce = 0;
 bool enable_cli = false;
 bool is_sntp_valid = false;
 bool is_rtc_valid = false;
@@ -325,7 +327,16 @@ void loop_usual_mode(){
 }
 
 void pulse() {
-
+  
+  if ( digitalRead(SWITCH_TO_CONSOLE_MODE) == LOW ) {
+    if ( tics_debounce++ > DEBOUNCE_DELAY ) {
+#ifdef DEBUG_SERIAL
+      Serial.println(F("reboot to console mode"));
+#endif
+      ESP.restart();
+    }
+  }
+  
   // show "not Connected" to WiFi error
   if ( show_info( &tics_show_noc, noc, &show_noc )) {
     return;
@@ -384,6 +395,12 @@ void check_system() {
     tics_show_noa = TICS_SHOW_ERR;
   }
   // tics_show_t = TICS_SHOW_TEMPERATURE
+  if ( ( tics_debounce > 0 )  and ( digitalRead(SWITCH_TO_CONSOLE_MODE) == HIGH ) ) {
+    tics_debounce = 0;
+#ifdef DEBUG_SERIAL
+    Serial.println(F("tics_debounce cleared"));
+#endif
+  }
 }
 
 bool show_info( unsigned int *tics, const uint8_t *info, bool *show ) {
@@ -470,19 +487,20 @@ void check_air_raid_api(){
 #endif
   }
 
-  bool alert_state = jroot["states"][region_name[region]]["alertnow"] | false;
+  // bool alert_state = jroot["states"][region_name[region]]["alertnow"] | false;
+  bool alert_state = jroot["states"][region_name[region]]["alertnow"];
   if ( alert_state ) { 
     if ( ! is_alert_now ) {
       is_alert_now = true;
 #ifdef DEBUG_SERIAL
-      Serial.println("Alert!");
+      Serial.println(F("Alert!"));
 #endif
     }
   } else {
     if ( is_alert_now ) {
       is_alert_now = false;
 #ifdef DEBUG_SERIAL
-      Serial.println("Alert cancelled");
+      Serial.println(F("Alert cancelled"));
 #endif
     }
   }
