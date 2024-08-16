@@ -1,12 +1,17 @@
 #define DEBUG_SERIAL  // because just "DEBUG" defined in PZEM004Tv30.h ( legacy :)
 #define DBG_WIFI    // because "DEBUG_WIFI" defined in a WiFiClient library
 #define DEBUG_TIME
+#define DEBUG_HTTP
 
 #if defined ( DBG_WIFI ) && not defined ( DEBUG_SERIAL )
 #define DEBUG_SERIAL
 #endif
 
 #if defined ( DEBUG_TIME ) && not defined ( DEBUG_SERIAL )
+#define DEBUG_SERIAL
+#endif
+
+#if defined ( DEBUG_HTTP ) && not defined ( DEBUG_SERIAL )
 #define DEBUG_SERIAL
 #endif
 
@@ -166,6 +171,7 @@ bool enable_cli = false;
 bool is_sntp_valid = false;
 bool is_rtc_valid = false;
 bool is_air_raid_api_ok = false;
+bool is_alert_now = false;
 bool show_noa = false;
 bool show_noc = false;
 bool show_not = false;
@@ -404,7 +410,7 @@ void check_air_raid_api(){
   is_air_raid_api_ok = false;
 
   if ( WiFi.status() != WL_CONNECTED ) {
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_HTTP
     Serial.println("[HTTP] WiFi not connected");
 #endif
     return;
@@ -413,70 +419,74 @@ void check_air_raid_api(){
   WiFiClient client;
   HTTPClient http;
   JsonDocument jroot;
-  JsonDocument filter;
-  bool alert_state = true;
+  JsonDocument jfilter;
 
-  filter["states"][region_name[region]]["alertnow"] = true;
-
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_HTTP
   Serial.println("[HTTP] begin...");
 #endif
 
   if ( ! http.begin(client, AIR_RAID_API_URL)) {
-#ifdef DEBUG_SERIAL
+#ifdef DEBUG_HTTP
     Serial.println("[HTTP] Unable to connect");
 #endif
     return;
   }
-#ifdef DEBUG_SERIAL
-  Serial.println("[HTTP] GET...");
+
+#ifdef DEBUG_HTTP
+  Serial.println("[HTTP] send GET request...");
 #endif
   int httpCode = http.GET();
-#ifdef DEBUG_SERIAL
-  Serial.printf("[HTTP] GET... code: %d\r\n", httpCode);
+#ifdef DEBUG_HTTP
+  Serial.printf("[HTTP] GET done with code: %d\r\n", httpCode);
 #endif
 
   if (httpCode < 0) {
-#ifdef DEBUG_SERIAL
-    Serial.printf("[HTTP] GET... failed, error: %s\r\n", http.errorToString(httpCode).c_str());
+#ifdef DEBUG_HTTP
+    Serial.printf("[HTTP] GET failed, error: %s\r\n", http.errorToString(httpCode).c_str());
 #endif
     return;
   }
   
-  if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-    String payload = http.getString();
-    
-    Serial.printf("[HTTP] Got %dB payload\r\n",payload.length());
-
-    deserializeJson(jroot, payload, DeserializationOption::Filter(filter));
-
-    Serial.println("[HTTP] JSON deserialized");
-
-/*
-    DeserializationError error = deserializeJson(jroot, payload);
-    if (error) {
-#ifdef DEBUG_SERIAL
-      Serial.printf("[HTTP] deserializeJson() failed: %s\r\n", error.f_str());
+  if ( ! ( httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY ) ) {
+    return;
+  }
+  
+  String payload = http.getString();
+#ifdef DEBUG_HTTP
+  Serial.printf("[HTTP] Got %dB payload\r\n",payload.length());
 #endif
-      return;
-    }
-*/
-    Serial.println("[HTTP] Get alert state");
 
-    alert_state = jroot["states"][region_name[region]]["alertnow"];
-    
-    // serializeJsonPretty(jroot, Serial);
-
-    // Serial.println("Got alert state");
-    
-    if ( alert_state ) { 
-      Serial.println("Alert!!!");
-    } else {
-      Serial.println("Alert cancelled");
-    }
-    is_air_raid_api_ok = true;
+  jfilter["states"][region_name[region]]["alertnow"] = true;
+  DeserializationError jerror = deserializeJson(jroot, payload, DeserializationOption::Filter(jfilter));
+  if ( jerror ) {
+#ifdef DEBUG_HTTP
+      Serial.printf("[HTTP] deserializeJson() failed: %s\r\n", jerror.f_str());
+#endif
+    return;
+#ifdef DEBUG_HTTP
+  } else {
+  // serializeJsonPretty(jroot, Serial);
+    Serial.println("[HTTP] JSON deserialized successfully");
+#endif
   }
 
+  bool alert_state = jroot["states"][region_name[region]]["alertnow"] | false;
+  if ( alert_state ) { 
+    if ( ! is_alert_now ) {
+      is_alert_now = true;
+#ifdef DEBUG_SERIAL
+      Serial.println("Alert!");
+#endif
+    }
+  } else {
+    if ( is_alert_now ) {
+      is_alert_now = false;
+#ifdef DEBUG_SERIAL
+      Serial.println("Alert cancelled");
+#endif
+    }
+  }
+  is_air_raid_api_ok = true;
   http.end();
   return;
 }
