@@ -186,6 +186,10 @@ bool show_t = false;
 int16_t big_led_cur_bright = 0;
 uint8_t big_led_cur_pause = 0;
 uint8_t big_led_bright_direction = 0;
+int light_sensor_data[16] = { 0 };
+uint8_t l_data_cur = 0;
+int illuminance = 0;
+
 
 const char* region_name[REGION_COUNT] = {
   "Відключено",               // 0
@@ -378,6 +382,8 @@ void pulse() {
   }
 
   led_alert();
+  
+  illuminance = ambient_light_sensor();
 }
 
 void update_time() {
@@ -535,3 +541,14 @@ void display_temp( int t ){
 }
 */
 
+int ambient_light_sensor() {
+int light_sensor = analogRead(A0);
+int sum = 0;
+
+  light_sensor_data[l_data_cur++] = light_sensor;
+  l_data_cur &= 0b00001111;
+  for ( uint8_t i = 0; i < 16; i++ ){
+    sum += light_sensor_data[i];
+  }
+  return((int)(sum / 16.0 + 0.5));
+}  
