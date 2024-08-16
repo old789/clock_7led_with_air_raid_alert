@@ -368,6 +368,8 @@ void pulse() {
   } else {
     display.setSegments(notime);
   }
+
+  led_alert();
 }
 
 void update_time() {
@@ -524,3 +526,21 @@ void display_temp( int t ){
   }
 }
 */
+
+void led_alert() {
+  if ( is_alert_now ) {
+    if ( digitalRead(LED_ALARM) == LOW ) {
+      digitalWrite( LED_ALARM, HIGH);
+#ifdef DEBUG_SERIAL
+      Serial.println(F("Big LED On"));
+#endif
+    }
+  } else {
+    if ( digitalRead(LED_ALARM) == HIGH ) {
+        digitalWrite( LED_ALARM, LOW);
+#ifdef DEBUG_SERIAL
+        Serial.println(F("Big LED Off"));
+#endif
+    }
+  }
+}
