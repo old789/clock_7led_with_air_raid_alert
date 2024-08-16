@@ -1,7 +1,7 @@
 #define DEBUG_SERIAL  // because just "DEBUG" defined in PZEM004Tv30.h ( legacy :)
 #define DBG_WIFI    // because "DEBUG_WIFI" defined in a WiFiClient library
 #define DEBUG_TIME
-#define DEBUG_HTTP
+// #define DEBUG_HTTP
 
 #if defined ( DBG_WIFI ) && not defined ( DEBUG_SERIAL )
 #define DEBUG_SERIAL
@@ -52,6 +52,11 @@
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
 #define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
 #define     DEBOUNCE_DELAY  20  // ( interval after turn switch 
+#define     BIG_LED_MAX_BRIGHT  180
+#define     BIG_LED_BRIGHT_STEPS  40
+#define     BIG_LED_BRIGHT_STEP  BIG_LED_MAX_BRIGHT / BIG_LED_BRIGHT_STEPS
+#define     BIG_LED_MIN_BRIGHT  BIG_LED_BRIGHT_STEP
+#define     TICS_BIG_LED_PAUSE  20
 
 #define     AIR_RAID_API_URL    "http://ubilling.net.ua/aerialalerts/"
 
@@ -178,6 +183,9 @@ bool show_noa = false;
 bool show_noc = false;
 bool show_not = false;
 bool show_t = false;
+int16_t big_led_cur_bright = 0;
+uint8_t big_led_cur_pause = 0;
+uint8_t big_led_bright_direction = 0;
 
 const char* region_name[REGION_COUNT] = {
   "Відключено",               // 0
@@ -423,6 +431,7 @@ bool show_info( unsigned int *tics, const uint8_t *info, bool *show ) {
 void check_air_raid_api(){
   if ( digitalRead(SWITCH_NO_ALARM_MODE) == LOW ) {
     is_air_raid_api_ok = true;
+    is_alert_now = false;
     return;
   }
   
@@ -526,20 +535,3 @@ void display_temp( int t ){
 }
 */
 
-void led_alert() {
-  if ( is_alert_now ) {
-    if ( digitalRead(LED_ALARM) == LOW ) {
-      digitalWrite( LED_ALARM, HIGH);
-#ifdef DEBUG_SERIAL
-      Serial.println(F("Big LED On"));
-#endif
-    }
-  } else {
-    if ( digitalRead(LED_ALARM) == HIGH ) {
-        digitalWrite( LED_ALARM, LOW);
-#ifdef DEBUG_SERIAL
-        Serial.println(F("Big LED Off"));
-#endif
-    }
-  }
-}
