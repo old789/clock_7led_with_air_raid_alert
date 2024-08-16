@@ -429,7 +429,7 @@ void check_air_raid_api(){
   is_air_raid_api_ok = false;
 
   if ( WiFi.status() != WL_CONNECTED ) {
-#ifdef DEBUG_HTTP
+#ifdef DEBUG_SERIAL
     Serial.println("[HTTP] WiFi not connected");
 #endif
     return;
@@ -445,7 +445,7 @@ void check_air_raid_api(){
 #endif
 
   if ( ! http.begin(client, AIR_RAID_API_URL)) {
-#ifdef DEBUG_HTTP
+#ifdef DEBUG_SERIAL
     Serial.println("[HTTP] Unable to connect");
 #endif
     return;
@@ -460,7 +460,7 @@ void check_air_raid_api(){
 #endif
 
   if (httpCode < 0) {
-#ifdef DEBUG_HTTP
+#ifdef DEBUG_SERIAL
     Serial.printf("[HTTP] GET failed, error: %s\r\n", http.errorToString(httpCode).c_str());
 #endif
     return;
@@ -478,7 +478,7 @@ void check_air_raid_api(){
   jfilter["states"][region_name[region]]["alertnow"] = true;
   DeserializationError jerror = deserializeJson(jroot, payload, DeserializationOption::Filter(jfilter));
   if ( jerror ) {
-#ifdef DEBUG_HTTP
+#ifdef DEBUG_SERIAL
       Serial.printf("[HTTP] deserializeJson() failed: %s\r\n", jerror.f_str());
 #endif
     return;
@@ -489,7 +489,6 @@ void check_air_raid_api(){
 #endif
   }
 
-  // bool alert_state = jroot["states"][region_name[region]]["alertnow"] | false;
   bool alert_state = jroot["states"][region_name[region]]["alertnow"];
   if ( alert_state ) { 
     if ( ! is_alert_now ) {
