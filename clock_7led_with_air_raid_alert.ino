@@ -2,6 +2,7 @@
 #define DBG_WIFI    // because "DEBUG_WIFI" defined in a WiFiClient library
 #define DEBUG_TIME
 // #define DEBUG_HTTP
+#define DEBUG_LIGHT
 
 #if defined ( DBG_WIFI ) && not defined ( DEBUG_SERIAL )
 #define DEBUG_SERIAL
@@ -52,10 +53,10 @@
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
 #define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
 #define     DEBOUNCE_DELAY  20  // ( interval after turn switch 
-#define     BIG_LED_MAX_BRIGHT  180
-#define     BIG_LED_BRIGHT_STEPS  40
-#define     BIG_LED_BRIGHT_STEP  BIG_LED_MAX_BRIGHT / BIG_LED_BRIGHT_STEPS
-#define     BIG_LED_MIN_BRIGHT  BIG_LED_BRIGHT_STEP
+#define     BIG_LED_MAX_BRIGHT  120
+// #define     BIG_LED_BRIGHT_STEPS  40
+// #define     BIG_LED_BRIGHT_STEP  BIG_LED_MAX_BRIGHT / BIG_LED_BRIGHT_STEPS
+#define     BIG_LED_MIN_BRIGHT  1
 #define     TICS_BIG_LED_PAUSE  20
 
 #define     AIR_RAID_API_URL    "http://ubilling.net.ua/aerialalerts/"
@@ -189,7 +190,10 @@ uint8_t big_led_bright_direction = 0;
 int light_sensor_data[16] = { 0 };
 uint8_t l_data_cur = 0;
 int illuminance = 0;
-
+#ifdef DEBUG_LIGHT
+unsigned int tics_show_illuminance = 0;
+bool show_illuminance = false;
+#endif
 
 const char* region_name[REGION_COUNT] = {
   "Відключено",               // 0
@@ -349,6 +353,16 @@ void pulse() {
     }
   }
   
+  led_alert();
+  
+  illuminance = ambient_light_sensor();
+
+#ifdef DEBUG_LIGHT
+  if ( display_illuminance() ) {
+    return;
+  }
+#endif
+
   // show "not Connected" to WiFi error
   if ( show_info( &tics_show_noc, noc, &show_noc )) {
     return;
@@ -381,9 +395,6 @@ void pulse() {
     display.setSegments(notime);
   }
 
-  led_alert();
-  
-  illuminance = ambient_light_sensor();
 }
 
 void update_time() {
@@ -398,6 +409,9 @@ void update_time() {
       mins = rtc.minute();
   }
   tics_show_dots = TICS_SHOW_DOTS;
+#ifdef DEBUG_LIGHT
+  tics_show_illuminance = 5;
+#endif
 }
 
 void check_system() {
@@ -433,6 +447,24 @@ bool show_info( unsigned int *tics, const uint8_t *info, bool *show ) {
   }
   return(false);
 }
+
+#ifdef DEBUG_LIGHT
+bool display_illuminance(){
+  if ( tics_show_illuminance > 0 ) {
+    if ( ! show_illuminance ) {
+      display.clear();
+      display.showNumberDecEx( illuminance, 0, true, 4, 0);
+      show_illuminance = true;
+    }
+    tics_show_illuminance--;
+    return(true);
+  } else if ( show_illuminance ) {
+    show_illuminance = false;
+  }
+  return(false);
+}
+#endif
+
 
 void check_air_raid_api(){
   if ( digitalRead(SWITCH_NO_ALARM_MODE) == LOW ) {
