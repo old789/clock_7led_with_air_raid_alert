@@ -1,60 +1,30 @@
 
 void led_alert() {
-
   if ( is_alert_now ) {
-    switch ( big_led_bright_direction ) {
-      case 0:
-        big_led_brightness_up();
-        break;
-      case 1:
-        big_led_brightness_down();
-        break;
-      default:  // just because
-        big_led_pause();
-    }
+    big_led_fading();
   } else {  
     analogWrite( LED_ALARM, 0);
+    // tics_bright_step = 0;
   }
 }
 
-
-void big_led_brightness_up() {
-  big_led_cur_bright += choice_big_led_bright_step(big_led_cur_bright);
-  if ( big_led_cur_bright >= BIG_LED_MAX_BRIGHT ) {
-    // big_led_cur_bright = BIG_LED_MAX_BRIGHT;
-    big_led_bright_direction^=1;
-  }
-  analogWrite( LED_ALARM, big_led_cur_bright);
-}
-
-void big_led_brightness_down() {
-  big_led_cur_bright -= choice_big_led_bright_step(big_led_cur_bright);
-  if ( big_led_cur_bright <= BIG_LED_MIN_BRIGHT ) {
-    // big_led_cur_bright = BIG_LED_MIN_BRIGHT;
-    big_led_bright_direction^=1;
-  }
-  analogWrite( LED_ALARM, big_led_cur_bright);
-}
-
-void big_led_pause(){
-  big_led_cur_pause++;
-  if ( big_led_cur_pause > TICS_BIG_LED_PAUSE ) {
-    big_led_cur_pause = 0;
-    big_led_bright_direction++;
-    if ( big_led_bright_direction > 3 ) {
-      big_led_bright_direction = 0;
+void big_led_fading() {
+  analogWrite( LED_ALARM, brightness_values[big_led_cur_bright]);
+  if ( big_led_bright_direction ) {
+    if ( big_led_cur_bright <= 0 ) {
+      big_led_bright_direction^=1;
+    } else {
+      big_led_cur_bright--;
+    }
+  } else {
+    if ( big_led_cur_bright >= big_led_brightness_values_max ) {
+      big_led_bright_direction^=1;
+    } else {
+      big_led_cur_bright++;
     }
   }
 }
 
-uint8_t choice_big_led_bright_step( int16_t current_bright ){
-  if ( current_bright < 7 ) 
-    return(1);
-  else if ( current_bright < 75 )
-    return(10);
-  else 
-    return(30);
-}
 
 /*
 void led_alert() {
@@ -77,8 +47,11 @@ void led_alert() {
 */
 
 /*
-void led_alert(){
+void manual_brightness_adjustment(){
   char inChar[2] = {0};  // because strncpy/strncat needs \0-terminated 2nd argument
+  bool display_brightness_set = false;
+  bool big_led_brightness_set = false;
+  
   if (Serial.available()) {
     inChar[0] = Serial.read();
   } else {
@@ -89,16 +62,20 @@ void led_alert(){
               // Serial.println("\"");
   switch ( inChar[0] ) {
     case 'q':
-              big_led_cur_bright += 10;
+              big_led_brightness_values_max++;
+              big_led_brightness_set = true;
               break;
     case 'a':
-              big_led_cur_bright -= 10;
+              big_led_brightness_values_max--;
+              big_led_brightness_set = true;
               break;
     case 'w':
-              big_led_cur_bright++;
+              display_brightness++;
+              display_brightness_set = true;
               break;
     case 's': 
-              big_led_cur_bright--;
+              display_brightness--;
+              display_brightness_set = true;
               break;
     default:
               Serial.print("Unknown symbol \"");
@@ -107,15 +84,29 @@ void led_alert(){
               return;
   }
   
-  if ( big_led_cur_bright > 0xff ) 
-    big_led_cur_bright = 0xff;
-  else if ( big_led_cur_bright < 0 )
-    big_led_cur_bright = 0;
+  if (  display_brightness_set ) {
+    if ( display_brightness > 7 ) {
+      display_brightness = 7;
+    } else if ( display_brightness < 0 ) {
+      display_brightness = 0;
+    }
+    display.setBrightness(display_brightness);
+    display_brightness_set = false;
+    Serial.print("Current display brightness ");
+    Serial.print( display_brightness );
+    Serial.println();
+  }
 
-  analogWrite( LED_ALARM, big_led_cur_bright);
-
-  Serial.print("Current brightness ");
-  Serial.print( big_led_cur_bright );
-  Serial.println();
+  if ( big_led_brightness_set ) {
+    if ( big_led_brightness_values_max > COUNT_BRIGHTNESS_VALUES -1 ) {
+      big_led_brightness_values_max = COUNT_BRIGHTNESS_VALUES - 1;
+    } else if ( big_led_brightness_values_max < 0 ) {
+      big_led_brightness_values_max = 0;
+    }
+    // big_led_brightness_set = false;
+    Serial.print("Current max brightness ");
+    Serial.print( big_led_brightness_values_max );
+    Serial.println();
+  }
 }
 */

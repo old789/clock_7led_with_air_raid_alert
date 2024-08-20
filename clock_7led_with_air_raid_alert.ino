@@ -2,7 +2,7 @@
 #define DBG_WIFI    // because "DEBUG_WIFI" defined in a WiFiClient library
 #define DEBUG_TIME
 // #define DEBUG_HTTP
-#define DEBUG_LIGHT
+// #define DEBUG_LIGHT
 
 #if defined ( DBG_WIFI ) && not defined ( DEBUG_SERIAL )
 #define DEBUG_SERIAL
@@ -52,12 +52,14 @@
 #define     REGION_COUNT      26
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
 #define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
-#define     DEBOUNCE_DELAY  20  // ( interval after turn switch 
-#define     BIG_LED_MAX_BRIGHT  120
+#define     DEBOUNCE_DELAY  20  // ( interval after turn switch, 1/10s )
+// #define     BIG_LED_MAX_BRIGHT  120
 // #define     BIG_LED_BRIGHT_STEPS  40
 // #define     BIG_LED_BRIGHT_STEP  BIG_LED_MAX_BRIGHT / BIG_LED_BRIGHT_STEPS
-#define     BIG_LED_MIN_BRIGHT  1
-#define     TICS_BIG_LED_PAUSE  20
+// #define     BIG_LED_MIN_BRIGHT  1
+// #define     TICS_BIG_LED_PAUSE  20
+#define  COUNT_BRIGHTNESS_VALUES 55
+const uint8_t brightness_values[COUNT_BRIGHTNESS_VALUES] = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 26, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 117, 129, 142, 156, 172, 189, 208, 229, 254 };
 
 #define     AIR_RAID_API_URL    "http://ubilling.net.ua/aerialalerts/"
 
@@ -175,6 +177,7 @@ unsigned int tics_show_noa = 0;
 unsigned int tics_show_noc = 0;
 unsigned int tics_show_t = 0;
 unsigned int tics_debounce = 0;
+// int16_t tics_bright_step = 0;
 bool enable_cli = false;
 bool is_sntp_valid = false;
 bool is_rtc_valid = false;
@@ -185,11 +188,12 @@ bool show_noc = false;
 bool show_not = false;
 bool show_t = false;
 int16_t big_led_cur_bright = 0;
-uint8_t big_led_cur_pause = 0;
+// uint8_t big_led_cur_pause = 0;
 uint8_t big_led_bright_direction = 0;
 int light_sensor_data[16] = { 0 };
 uint8_t l_data_cur = 0;
 int illuminance = 0;
+// int16_t display_brightness = 5;
 #ifdef DEBUG_LIGHT
 unsigned int tics_show_illuminance = 0;
 bool show_illuminance = false;
@@ -270,8 +274,8 @@ void setup() {
 
   EEPROM.begin(1024);
   
-  // Set the brightness to 5 (0=dimmest 7=brightest)
-	display.setBrightness(5);
+  // Set the brightness to 4 (0=dimmest 7=brightest)
+	display.setBrightness( 4 );
 	// Set all segments ON
 	display.setSegments(allON);
   delay(2000);
@@ -352,16 +356,21 @@ void pulse() {
       ESP.restart();
     }
   }
+
+  // manual_brightness_adjustment();
+
+  ambient_light_sensor();
   
   led_alert();
   
-  illuminance = ambient_light_sensor();
 
+/*
 #ifdef DEBUG_LIGHT
   if ( display_illuminance() ) {
     return;
   }
 #endif
+*/
 
   // show "not Connected" to WiFi error
   if ( show_info( &tics_show_noc, noc, &show_noc )) {
@@ -573,7 +582,7 @@ void display_temp( int t ){
 }
 */
 
-int ambient_light_sensor() {
+void ambient_light_sensor() {
 int light_sensor = analogRead(A0);
 int sum = 0;
 
@@ -582,5 +591,18 @@ int sum = 0;
   for ( uint8_t i = 0; i < 16; i++ ){
     sum += light_sensor_data[i];
   }
-  return((int)(sum / 16.0 + 0.5));
+  illuminance = (int)(sum / 16.0 + 0.5);
+  if ( illuminance < 30) {
+    display.setBrightness(0);
+    big_led_brightness_values_max = 10;
+  } else if ( illuminance < 50) {
+    display.setBrightness(1);
+    big_led_brightness_values_max = 12;
+  } else if ( illuminance < 70) {
+    display.setBrightness(3);
+    big_led_brightness_values_max = 19;
+  } else {
+    display.setBrightness(6);
+    big_led_brightness_values_max = COUNT_BRIGHTNESS_VALUES - 1;
+  } 
 }  
