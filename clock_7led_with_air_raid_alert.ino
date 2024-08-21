@@ -27,7 +27,7 @@
 #include <EEPROM.h>
 #include <SimpleCLI.h>  // https://github.com/SpacehuhnTech/SimpleCLI
 #include "TickTwo.h"    // https://github.com/sstaub/TickTwo
-// #include <microDS18B20.h>   // https://github.com/GyverLibs/microDS18B20/
+#include <microDS18B20.h>   // https://github.com/GyverLibs/microDS18B20/
 #include <ArduinoJson.h>       // https://arduinojson.org/
 
 // Define the 4 digits display connections pins
@@ -47,12 +47,14 @@
 
 #define     TICS_SHOW_DOTS    4  // ( interval when dots on, 1/10s )
 #define     TICS_SHOW_ERR    20  // ( interval when show error sign, 1/10s )
-#define     TICS_SHOW_TEMPERATURE    20  // ( interval when show temperature, 1/10s )
+#define     TICS_SHOW_TEMPERATURE    30  // ( interval when show temperature, 1/10s )
 #define     MAX_ALLOWED_INPUT 127
 #define     REGION_COUNT      26
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
 #define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
 #define     DEBOUNCE_DELAY  20  // ( interval after turn switch, 1/10s )
+#define     DELAY_MEASUREMENT_DS18B20  10 // ( 1/10s )
+
 // #define     BIG_LED_MAX_BRIGHT  120
 // #define     BIG_LED_BRIGHT_STEPS  40
 // #define     BIG_LED_BRIGHT_STEP  BIG_LED_MAX_BRIGHT / BIG_LED_BRIGHT_STEPS
@@ -72,7 +74,7 @@ TM1637Display display = TM1637Display(CLK, DIO);
 uRTCLib rtc(0x68);
 
 // DS18B20 sensor
-// MicroDS18B20<D4> sensor1;
+MicroDS18B20<2> thermometer;
 
 // Create CLI Object
 SimpleCLI cli;
@@ -177,12 +179,14 @@ unsigned int tics_show_noa = 0;
 unsigned int tics_show_noc = 0;
 unsigned int tics_show_t = 0;
 unsigned int tics_debounce = 0;
+unsigned int tics_before_temperature_ready = DELAY_MEASUREMENT_DS18B20;
 // int16_t tics_bright_step = 0;
 bool enable_cli = false;
 bool is_sntp_valid = false;
 bool is_rtc_valid = false;
 bool is_air_raid_api_ok = false;
 bool is_alert_now = false;
+bool is_temperature_ready = false;
 bool show_noa = false;
 bool show_noc = false;
 bool show_not = false;
@@ -190,9 +194,11 @@ bool show_t = false;
 int16_t big_led_cur_bright = 0;
 // uint8_t big_led_cur_pause = 0;
 uint8_t big_led_bright_direction = 0;
+uint8_t big_led_brightness_values_max = COUNT_BRIGHTNESS_VALUES - 1;
 int light_sensor_data[16] = { 0 };
 uint8_t l_data_cur = 0;
 int illuminance = 0;
+uint16_t temperature = 0;
 // int16_t display_brightness = 5;
 #ifdef DEBUG_LIGHT
 unsigned int tics_show_illuminance = 0;
@@ -321,6 +327,7 @@ void setup() {
       display.setSegments(err,3,1);
       delay(3000);
     }
+    thermometer.requestTemp();
     timer1.start();
     timer2.start();
     timer3.start();
@@ -363,6 +370,9 @@ void pulse() {
   
   led_alert();
   
+  if ( ! is_temperature_ready ) {
+    temperature_get_ready();
+  }
 
 /*
 #ifdef DEBUG_LIGHT
@@ -384,6 +394,11 @@ void pulse() {
   
   // show no NTP time error
   if ( show_info( &tics_show_not, noT, &show_not )) {
+    return;
+  }
+  
+  // show temperature
+  if ( show_temperature() ) {
     return;
   }
   
@@ -433,7 +448,11 @@ void check_system() {
   if ( ! is_air_raid_api_ok ) {
     tics_show_noa = TICS_SHOW_ERR;
   }
-  // tics_show_t = TICS_SHOW_TEMPERATURE
+  
+  thermometer.requestTemp();
+  tics_before_temperature_ready = DELAY_MEASUREMENT_DS18B20;
+  is_temperature_ready = false;
+
   if ( ( tics_debounce > 0 )  and ( digitalRead(SWITCH_TO_CONSOLE_MODE) == HIGH ) ) {
     tics_debounce = 0;
 #ifdef DEBUG_SERIAL
@@ -455,6 +474,55 @@ bool show_info( unsigned int *tics, const uint8_t *info, bool *show ) {
     *show = false;
   }
   return(false);
+}
+
+void temperature_get_ready(){
+  if ( tics_before_temperature_ready > 0 ) {
+    tics_before_temperature_ready--;
+  } else {
+    if ( thermometer.readTemp() ) {
+      is_temperature_ready = true;
+      tics_show_t = TICS_SHOW_TEMPERATURE;
+    }
+  }
+}
+
+bool show_temperature() {
+  int temperature;
+  uint16_t t1;
+  uint8_t hdig;
+  uint8_t ldig;
+  
+  if ( ! is_temperature_ready ) {
+    return(false);
+  }
+  
+  if ( tics_show_t <= 0 ) {
+    if ( show_t ) {
+      show_t = false;
+    }
+    return(false);
+  }
+  
+  if ( show_t ) {
+    tics_show_t--;
+    return(true);
+  }
+  
+  temperature = thermometer.getTempInt();
+  t1 = abs( temperature );
+  hdig = t1 / 10;
+  ldig = t1 % 10;
+  temp_segments[1] =  display.encodeDigit(hdig);
+  temp_segments[2] =  display.encodeDigit(ldig);
+  if ( temperature >= 0 ) {
+    display.clear();
+    display.setSegments(temp_segments+sizeof(uint8_t),3,1);
+  }else{
+    display.setSegments(temp_segments);
+  }
+  show_t = true;
+  return(true);
 }
 
 #ifdef DEBUG_LIGHT
@@ -565,22 +633,6 @@ void check_air_raid_api(){
   http.end();
   return;
 }
-
-/*
-void display_temp( int t ){
-  uint16_t t1 = abs(t);
-  uint8_t hdig = t1 / 10;
-  uint8_t ldig = t1 % 10;
-  
-  temp_segments[1] =  display.encodeDigit(hdig);
-  temp_segments[2] =  display.encodeDigit(ldig);
-  if (  t >= 0 ) {
-    display.setSegments(temp_segments+sizeof(uint8_t),3,1);
-  }else{
-    display.setSegments(temp_segments);
-  }
-}
-*/
 
 void ambient_light_sensor() {
 int light_sensor = analogRead(A0);
