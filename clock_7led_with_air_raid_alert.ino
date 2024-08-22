@@ -2,7 +2,6 @@
 #define DBG_WIFI    // because "DEBUG_WIFI" defined in a WiFiClient library
 #define DEBUG_TIME
 // #define DEBUG_HTTP
-// #define DEBUG_LIGHT
 
 #if defined ( DBG_WIFI ) && not defined ( DEBUG_SERIAL )
 #define DEBUG_SERIAL
@@ -21,7 +20,6 @@
 #include "uRTCLib.h"        // https://github.com/Naguissa/uRTCLib
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-//#include <WiFiClientSecureBearSSL.h>
 #include <time.h>
 #include <coredecls.h> // optional settimeofday_cb() callback to check on server
 #include <EEPROM.h>
@@ -31,19 +29,22 @@
 #include <ArduinoJson.h>       // https://arduinojson.org/
 
 // Define the 4 digits display connections pins
-#define CLK D5
-#define DIO D3
+#define     CLK D5
+#define     DIO D3
 
 // Define the RTC connections pins
-#define SCL D6
-#define SDA D7
+#define     SCL D6
+#define     SDA D7
 
 // Define the alarm LED pin
-#define LED_ALARM D8
+#define     LED_ALARM D8
 
 // Define ports of buttons
-#define   SWITCH_TO_CONSOLE_MODE  D1
-#define   SWITCH_NO_ALARM_MODE    D2
+#define     SWITCH_TO_CONSOLE_MODE  D1
+#define     SWITCH_NO_ALARM_MODE    D2
+
+// Define URL 
+#define     AIR_RAID_API_URL    "http://ubilling.net.ua/aerialalerts/"
 
 #define     TICS_SHOW_DOTS    4  // ( interval when dots on, 1/10s )
 #define     TICS_SHOW_ERR    20  // ( interval when show error sign, 1/10s )
@@ -54,18 +55,38 @@
 #define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
 #define     DEBOUNCE_DELAY  20  // ( interval after turn switch, 1/10s )
 #define     DELAY_MEASUREMENT_DS18B20  10 // ( 1/10s )
+#define     COUNT_BRIGHTNESS_VALUES 55
 
-// #define     BIG_LED_MAX_BRIGHT  120
-// #define     BIG_LED_BRIGHT_STEPS  40
-// #define     BIG_LED_BRIGHT_STEP  BIG_LED_MAX_BRIGHT / BIG_LED_BRIGHT_STEPS
-// #define     BIG_LED_MIN_BRIGHT  1
-// #define     TICS_BIG_LED_PAUSE  20
-#define  COUNT_BRIGHTNESS_VALUES 55
 const uint8_t brightness_values[COUNT_BRIGHTNESS_VALUES] = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 26, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 117, 129, 142, 156, 172, 189, 208, 229, 254 };
 
-#define     AIR_RAID_API_URL    "http://ubilling.net.ua/aerialalerts/"
-
-//#define   NOP __asm__ __volatile__ ("nop\n\t")
+const char* region_name[REGION_COUNT] = {
+  "Відключено",               // 0
+  "Вінницька область",        // 1
+  "Волинська область",        // 2
+  "Дніпропетровська область", // 3
+  "Донецька область",         // 4
+  "Житомирська область",      // 5
+  "Закарпатська область",     // 6 
+  "Запорізька область",       // 7
+  "Івано-Франківська область",// 8  
+  "Київська область",         // 9
+  "Кіровоградська область",   // 10
+  "Луганська область",        // 11
+  "Львівська область",        // 12
+  "Миколаївська область",     // 13
+  "Одеська область",          // 14
+  "Полтавська область",       // 15
+  "Рівненська область",       // 16
+  "Сумська область",          // 17
+  "Тернопільська область",    // 18
+  "Харківська область",       // 19
+  "Херсонська область",       // 20
+  "Хмельницька область",      // 21
+  "Черкаська область",        // 22
+  "Чернівецька область",      // 23
+  "Чернігівська область",     // 24
+  "м. Київ"                   // 25
+};
 
 // Create a display object of type TM1637Display
 TM1637Display display = TM1637Display(CLK, DIO);
@@ -91,8 +112,7 @@ TickTwo timer1( pulse, 100);  // 0.1s
 TickTwo timer2( update_time, 1000);   // 1s
 TickTwo timer3( check_air_raid_api, 5 * 1000);   // 5s
 TickTwo timer4( check_system, 30 * 1000 );  // 30s
-//TickTwo timer5( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
-TickTwo timer5( check_is_sntp_valid, 20 * 60 * 1000);  // test
+TickTwo timer5( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
 
 // Create an array that turns all segments ON
 const uint8_t allON[] = {0xff, 0xff, 0xff, 0xff};
@@ -167,11 +187,8 @@ uint8_t temp_segments[] = {
 time_t now;                       // this are the seconds since Epoch (1970) - UTC
 tm tm;                            // the structure tm holds time information in a more convenient way
 time_t last_sntp_sync = 0;
-
-//uint8_t secs = 0;
 uint8_t mins = 0;
 uint8_t hours = 0;
-
 bool dots_display = false;
 unsigned int tics_show_dots = 0;
 unsigned int tics_show_not = 0;
@@ -180,7 +197,6 @@ unsigned int tics_show_noc = 0;
 unsigned int tics_show_t = 0;
 unsigned int tics_debounce = 0;
 unsigned int tics_before_temperature_ready = DELAY_MEASUREMENT_DS18B20;
-// int16_t tics_bright_step = 0;
 bool enable_cli = false;
 bool is_sntp_valid = false;
 bool is_rtc_valid = false;
@@ -192,47 +208,16 @@ bool show_noc = false;
 bool show_not = false;
 bool show_t = false;
 int16_t big_led_cur_bright = 0;
-// uint8_t big_led_cur_pause = 0;
 uint8_t big_led_bright_direction = 0;
 uint8_t big_led_brightness_values_max = COUNT_BRIGHTNESS_VALUES - 1;
 int light_sensor_data[16] = { 0 };
 uint8_t l_data_cur = 0;
 int illuminance = 0;
 uint16_t temperature = 0;
-// int16_t display_brightness = 5;
 #ifdef DEBUG_LIGHT
 unsigned int tics_show_illuminance = 0;
 bool show_illuminance = false;
 #endif
-
-const char* region_name[REGION_COUNT] = {
-  "Відключено",               // 0
-  "Вінницька область",        // 1
-  "Волинська область",        // 2
-  "Дніпропетровська область", // 3
-  "Донецька область",         // 4
-  "Житомирська область",      // 5
-  "Закарпатська область",     // 6 
-  "Запорізька область",       // 7
-  "Івано-Франківська область",// 8  
-  "Київська область",         // 9
-  "Кіровоградська область",   // 10
-  "Луганська область",        // 11
-  "Львівська область",        // 12
-  "Миколаївська область",     // 13
-  "Одеська область",          // 14
-  "Полтавська область",       // 15
-  "Рівненська область",       // 16
-  "Сумська область",          // 17
-  "Тернопільська область",    // 18
-  "Харківська область",       // 19
-  "Херсонська область",       // 20
-  "Хмельницька область",      // 21
-  "Черкаська область",        // 22
-  "Чернівецька область",      // 23
-  "Чернігівська область",     // 24
-  "м. Київ"                   // 25
-};
 
 // EEPROM data
 uint16_t mark = 0x55aa;
@@ -266,7 +251,6 @@ Command cmdList;
 Command cmdHelp;
 
 void setup() {
-  //pinMode( LED_BUILTIN, OUTPUT );
   pinMode( LED_ALARM, OUTPUT );
   pinMode( SWITCH_TO_CONSOLE_MODE, INPUT_PULLUP );
   pinMode( SWITCH_NO_ALARM_MODE, INPUT_PULLUP );
@@ -280,12 +264,19 @@ void setup() {
 
   EEPROM.begin(1024);
   
-  // Set the brightness to 4 (0=dimmest 7=brightest)
+  // display test
 	display.setBrightness( 4 );
-	// Set all segments ON
 	display.setSegments(allON);
-  delay(2000);
+  // big LED test
+  analogWrite( LED_ALARM, 10);
+  delay(1000);
+  analogWrite( LED_ALARM, 25);
+  delay(1000);
+  analogWrite( LED_ALARM, 250);
+  delay(1000);
+  // end tests
   display.clear();
+  analogWrite( LED_ALARM, 0);
 
   URTCLIB_WIRE.begin( SDA, SCL );
 
@@ -297,6 +288,7 @@ void setup() {
   } else {
     is_rtc_valid = true;
     rtc.refresh();
+    // show date
     display.showNumberDec(rtc.day(),true,2,1);
     delay(1000);
     display.clear();
@@ -373,14 +365,6 @@ void pulse() {
   if ( ! is_temperature_ready ) {
     temperature_get_ready();
   }
-
-/*
-#ifdef DEBUG_LIGHT
-  if ( display_illuminance() ) {
-    return;
-  }
-#endif
-*/
 
   // show "not Connected" to WiFi error
   if ( show_info( &tics_show_noc, noc, &show_noc )) {
@@ -525,24 +509,6 @@ bool show_temperature() {
   return(true);
 }
 
-#ifdef DEBUG_LIGHT
-bool display_illuminance(){
-  if ( tics_show_illuminance > 0 ) {
-    if ( ! show_illuminance ) {
-      display.clear();
-      display.showNumberDecEx( illuminance, 0, true, 4, 0);
-      show_illuminance = true;
-    }
-    tics_show_illuminance--;
-    return(true);
-  } else if ( show_illuminance ) {
-    show_illuminance = false;
-  }
-  return(false);
-}
-#endif
-
-
 void check_air_raid_api(){
   if ( digitalRead(SWITCH_NO_ALARM_MODE) == LOW ) {
     is_air_raid_api_ok = true;
@@ -554,7 +520,7 @@ void check_air_raid_api(){
 
   if ( WiFi.status() != WL_CONNECTED ) {
 #ifdef DEBUG_SERIAL
-    Serial.println("[HTTP] WiFi not connected");
+    Serial.println(F("[HTTP] WiFi not connected"));
 #endif
     return;
   }
@@ -565,18 +531,18 @@ void check_air_raid_api(){
   JsonDocument jfilter;
 
 #ifdef DEBUG_HTTP
-  Serial.println("[HTTP] begin...");
+  Serial.println(F("[HTTP] begin..."));
 #endif
 
   if ( ! http.begin(client, AIR_RAID_API_URL)) {
 #ifdef DEBUG_SERIAL
-    Serial.println("[HTTP] Unable to connect");
+    Serial.println(F("[HTTP] Unable to connect"));
 #endif
     return;
   }
 
 #ifdef DEBUG_HTTP
-  Serial.println("[HTTP] send GET request...");
+  Serial.println(F("[HTTP] send GET request..."));
 #endif
   int httpCode = http.GET();
 #ifdef DEBUG_HTTP
@@ -608,8 +574,7 @@ void check_air_raid_api(){
     return;
 #ifdef DEBUG_HTTP
   } else {
-  // serializeJsonPretty(jroot, Serial);
-    Serial.println("[HTTP] JSON deserialized successfully");
+    Serial.println(F("[HTTP] JSON deserialized successfully"));
 #endif
   }
 
@@ -657,4 +622,4 @@ int sum = 0;
     display.setBrightness(6);
     big_led_brightness_values_max = COUNT_BRIGHTNESS_VALUES - 1;
   } 
-}  
+}

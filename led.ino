@@ -4,7 +4,6 @@ void led_alert() {
     big_led_fading();
   } else {  
     analogWrite( LED_ALARM, 0);
-    // tics_bright_step = 0;
   }
 }
 
