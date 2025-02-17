@@ -23,7 +23,8 @@ Based on the Node MCU with an TM1637 display.
 
 
 ### Додаткова індикація
-|^v^v| Підключення до WiFi |
-|not| "No time", немає NTP синхронізації |
-|noA| "No answer", не відповідає API Ubilling |
+
+| ^v^v | Підключення до WiFi |
+| not | "No time", немає NTP синхронізації |
+| noA | "No answer", не відповідає API Ubilling |
   
