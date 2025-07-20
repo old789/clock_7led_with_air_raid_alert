@@ -16,17 +16,18 @@
 #endif
 
 // Include the library
+#include <Wire.h>
 #include <TM1637Display.h>  // https://github.com/avishorp/TM1637
 #include "uRTCLib.h"        // https://github.com/Naguissa/uRTCLib
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <time.h>
-#include <coredecls.h> // optional settimeofday_cb() callback to check on server
+#include <coredecls.h>      // optional settimeofday_cb() callback to check on server
 #include <EEPROM.h>
-#include <SimpleCLI.h>  // https://github.com/SpacehuhnTech/SimpleCLI
-#include "TickTwo.h"    // https://github.com/sstaub/TickTwo
-#include <microDS18B20.h>   // https://github.com/GyverLibs/microDS18B20/
-#include <ArduinoJson.h>       // https://arduinojson.org/
+#include <SimpleCLI.h>      // https://github.com/SpacehuhnTech/SimpleCLI
+#include "TickTwo.h"        // https://github.com/sstaub/TickTwo
+#include <DS18B20.h>        // https://github.com/RobTillaart/DS18B20_RT
+#include <ArduinoJson.h>    // https://arduinojson.org/
 
 // Define the 4 digits display connections pins
 #define     CLK D5
@@ -95,7 +96,8 @@ TM1637Display display = TM1637Display(CLK, DIO);
 uRTCLib rtc(0x68);
 
 // DS18B20 sensor
-MicroDS18B20<2> thermometer;
+OneWire oneWire1(2);
+DS18B20 thermometer(&oneWire1);
 
 // Create CLI Object
 SimpleCLI cli;
@@ -213,7 +215,9 @@ uint8_t big_led_brightness_values_max = COUNT_BRIGHTNESS_VALUES - 1;
 int light_sensor_data[16] = { 0 };
 uint8_t l_data_cur = 0;
 int illuminance = 0;
-uint16_t temperature = 0;
+float temperature = 0;
+bool t_sensor = false;
+unsigned int t_request = 0;
 #ifdef DEBUG_LIGHT
 unsigned int tics_show_illuminance = 0;
 bool show_illuminance = false;
@@ -265,8 +269,8 @@ void setup() {
   EEPROM.begin(1024);
   
   // display test
-	display.setBrightness( 4 );
-	display.setSegments(allON);
+  display.setBrightness( 4 );
+  display.setSegments(allON);
   // big LED test
   analogWrite( LED_ALARM, 10);
   delay(1000);
@@ -319,7 +323,13 @@ void setup() {
       display.setSegments(err,3,1);
       delay(3000);
     }
-    thermometer.requestTemp();
+    t_sensor = thermometer.begin();
+    if ( t_sensor ){
+      thermometer.setResolution(12);
+      thermometer.requestTemperatures();
+    } else {
+      Serial.println(F("Temperture sensor fail"));
+    }
     timer1.start();
     timer2.start();
     timer3.start();
@@ -362,10 +372,6 @@ void pulse() {
   
   led_alert();
   
-  if ( ! is_temperature_ready ) {
-    temperature_get_ready();
-  }
-
   // show "not Connected" to WiFi error
   if ( show_info( &tics_show_noc, noc, &show_noc )) {
     return;
@@ -432,10 +438,17 @@ void check_system() {
   if ( ! is_air_raid_api_ok ) {
     tics_show_noa = TICS_SHOW_ERR;
   }
-  
-  thermometer.requestTemp();
-  tics_before_temperature_ready = DELAY_MEASUREMENT_DS18B20;
-  is_temperature_ready = false;
+
+  if ( t_sensor ) {
+    if ( t_request > 0 ) {
+      if ( thermometer.isConversionComplete() ){
+        temperature = thermometer.getTempC();
+      }
+    } else {
+      thermometer.requestTemperatures();
+    }
+    t_request ^= 1;
+  } 
 
   if ( ( tics_debounce > 0 )  and ( digitalRead(SWITCH_TO_CONSOLE_MODE) == HIGH ) ) {
     tics_debounce = 0;
@@ -460,24 +473,13 @@ bool show_info( unsigned int *tics, const uint8_t *info, bool *show ) {
   return(false);
 }
 
-void temperature_get_ready(){
-  if ( tics_before_temperature_ready > 0 ) {
-    tics_before_temperature_ready--;
-  } else {
-    if ( thermometer.readTemp() ) {
-      is_temperature_ready = true;
-      tics_show_t = TICS_SHOW_TEMPERATURE;
-    }
-  }
-}
 
 bool show_temperature() {
-  int temperature;
   uint16_t t1;
   uint8_t hdig;
   uint8_t ldig;
   
-  if ( ! is_temperature_ready ) {
+  if ( ! t_sensor ) {
     return(false);
   }
   
@@ -493,8 +495,7 @@ bool show_temperature() {
     return(true);
   }
   
-  temperature = thermometer.getTempInt();
-  t1 = abs( temperature );
+  t1 = (uint16_t)(abs( temperature ) + 0.5);
   hdig = t1 / 10;
   ldig = t1 % 10;
   temp_segments[1] =  display.encodeDigit(hdig);
