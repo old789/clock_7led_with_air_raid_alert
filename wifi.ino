@@ -39,4 +39,15 @@ void wifi_init(){
   Serial.print(F("IP address: "));Serial.println(WiFi.localIP());
   Serial.print(F("RSSI: "));Serial.println(WiFi.RSSI());
 #endif
+
+ // Start mDNS
+  if (MDNS.begin(dev_name)) {             
+    MDNS.addService("esp", "tcp", 8080);  // Announce tcp service on port 8080 ( just for informaton )
+#ifdef DBG_WIFI
+    Serial.println(F("mDNS started"));
+  }else{
+    Serial.println(F("Error starting mDNS"));
+#endif
+  }
+
 }

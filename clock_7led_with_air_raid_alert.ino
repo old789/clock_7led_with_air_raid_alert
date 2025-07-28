@@ -20,6 +20,7 @@
 #include <TM1637Display.h>  // https://github.com/avishorp/TM1637
 #include "uRTCLib.h"        // https://github.com/Naguissa/uRTCLib
 #include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
 #include <ESP8266HTTPClient.h>
 #include <time.h>
 #include <coredecls.h>      // optional settimeofday_cb() callback to check on server
@@ -114,6 +115,8 @@ TickTwo timer2( update_time, 1000);   // 1s
 TickTwo timer3( check_air_raid_api, 5 * 1000);   // 5s
 TickTwo timer4( check_system, 30 * 1000 );  // 30s
 TickTwo timer5( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
+
+char dev_name[] = "air_alert";
 
 // Create an array that turns all segments ON
 const uint8_t allON[] = {0xff, 0xff, 0xff, 0xff};
@@ -424,6 +427,8 @@ void update_time() {
 #ifdef DEBUG_LIGHT
   tics_show_illuminance = 5;
 #endif
+  // additional load
+  MDNS.update();
 }
 
 void check_system() {
