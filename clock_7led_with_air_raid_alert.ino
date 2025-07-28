@@ -55,7 +55,6 @@
 #define     STARUP_DELAY_FOR_NTP  5 // minutes
 #define     PAUSE_BEFORE_NTP_TIME_WILL_NO_VALID   24 * 3600   // 1 day
 #define     DEBOUNCE_DELAY  20  // ( interval after turn switch, 1/10s )
-#define     DELAY_MEASUREMENT_DS18B20  10 // ( 1/10s )
 #define     COUNT_BRIGHTNESS_VALUES 55
 
 const uint8_t brightness_values[COUNT_BRIGHTNESS_VALUES] = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 26, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 117, 129, 142, 156, 172, 189, 208, 229, 254 };
@@ -198,7 +197,6 @@ unsigned int tics_show_noa = 0;
 unsigned int tics_show_noc = 0;
 unsigned int tics_show_t = 0;
 unsigned int tics_debounce = 0;
-unsigned int tics_before_temperature_ready = DELAY_MEASUREMENT_DS18B20;
 bool enable_cli = false;
 bool is_sntp_valid = false;
 bool is_rtc_valid = false;
@@ -440,15 +438,22 @@ void check_system() {
   }
 
   if ( t_sensor ) {
-    if ( t_request > 0 ) {
+    if ( t_request == 0 ) {
+      thermometer.requestTemperatures();
+    } else {
       if ( thermometer.isConversionComplete() ){
         temperature = thermometer.getTempC();
+        is_temperature_ready = true;
+      } else {
+        is_temperature_ready = false;
       }
-    } else {
-      thermometer.requestTemperatures();
     }
     t_request ^= 1;
   } 
+
+  if ( is_temperature_ready ) {
+    tics_show_t = TICS_SHOW_TEMPERATURE;
+  }
 
   if ( ( tics_debounce > 0 )  and ( digitalRead(SWITCH_TO_CONSOLE_MODE) == HIGH ) ) {
     tics_debounce = 0;
