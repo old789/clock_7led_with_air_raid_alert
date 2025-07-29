@@ -46,7 +46,9 @@
 #define     SWITCH_NO_ALARM_MODE    D2
 
 // Define URL 
-#define     AIR_RAID_API_URL    "http://ubilling.net.ua/aerialalerts/"
+#define     AIR_RAID_API_URL_UBI    "http://ubilling.net.ua/aerialalerts/"
+//#define     AIR_RAID_API_URL_AIU    "https://api.alerts.in.ua/v1/iot/active_air_raid_alerts/" // "%u.json?token=%s"
+#define     AIR_RAID_API_URL_AIU    "https://api.alerts.in.ua/v1/iot/active_air_raid_alerts/%u.json?token=%s"
 
 #define     TICS_SHOW_DOTS    4  // ( interval when dots on, 1/10s )
 #define     TICS_SHOW_ERR    20  // ( interval when show error sign, 1/10s )
@@ -219,6 +221,8 @@ int illuminance = 0;
 float temperature = 0;
 bool t_sensor = false;
 unsigned int t_request = 0;
+bool alert_state = false;
+char aiu_uri[129] = {0};
 #ifdef DEBUG_LIGHT
 unsigned int tics_show_illuminance = 0;
 bool show_illuminance = false;
@@ -232,6 +236,8 @@ char ssid[33];
 char passw[65];
 char host[33];
 char tzdata[129];
+uint16_t aerialalerts_api = 0;
+char aiu_token[129];
 
 #define PT_REGION       sizeof(mark)
 #define PT_POLL         PT_REGION+sizeof(region)
@@ -330,6 +336,10 @@ void setup() {
       thermometer.requestTemperatures();
     } else {
       Serial.println(F("Temperture sensor fail"));
+    }
+    if ( aerialalerts_api == 1 ){
+      //sprintf(aiu_uri, "%s%u.json?token=%s", AIR_RAID_API_URL_AIU, region, aiu_token);
+      sprintf(aiu_uri, AIR_RAID_API_URL_AIU, region, aiu_token);
     }
     timer1.start();
     timer2.start();
@@ -518,96 +528,6 @@ bool show_temperature() {
   }
   show_t = true;
   return(true);
-}
-
-void check_air_raid_api(){
-  if ( digitalRead(SWITCH_NO_ALARM_MODE) == LOW ) {
-    is_air_raid_api_ok = true;
-    is_alert_now = false;
-    return;
-  }
-  
-  is_air_raid_api_ok = false;
-
-  if ( WiFi.status() != WL_CONNECTED ) {
-#ifdef DEBUG_SERIAL
-    Serial.println(F("[HTTP] WiFi not connected"));
-#endif
-    return;
-  }
-
-  WiFiClient client;
-  HTTPClient http;
-  JsonDocument jroot;
-  JsonDocument jfilter;
-
-#ifdef DEBUG_HTTP
-  Serial.println(F("[HTTP] begin..."));
-#endif
-
-  if ( ! http.begin(client, AIR_RAID_API_URL)) {
-#ifdef DEBUG_SERIAL
-    Serial.println(F("[HTTP] Unable to connect"));
-#endif
-    return;
-  }
-
-#ifdef DEBUG_HTTP
-  Serial.println(F("[HTTP] send GET request..."));
-#endif
-  int httpCode = http.GET();
-#ifdef DEBUG_HTTP
-  Serial.printf("[HTTP] GET done with code: %d\r\n", httpCode);
-#endif
-
-  if (httpCode < 0) {
-#ifdef DEBUG_SERIAL
-    Serial.printf("[HTTP] GET failed, error: %s\r\n", http.errorToString(httpCode).c_str());
-#endif
-    return;
-  }
-  
-  if ( ! ( httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY ) ) {
-    return;
-  }
-  
-  String payload = http.getString();
-#ifdef DEBUG_HTTP
-  Serial.printf("[HTTP] Got %dB payload\r\n",payload.length());
-#endif
-
-  jfilter["states"][region_name[region]]["alertnow"] = true;
-  DeserializationError jerror = deserializeJson(jroot, payload, DeserializationOption::Filter(jfilter));
-  if ( jerror ) {
-#ifdef DEBUG_SERIAL
-      Serial.printf("[HTTP] deserializeJson() failed: %s\r\n", jerror.f_str());
-#endif
-    return;
-#ifdef DEBUG_HTTP
-  } else {
-    Serial.println(F("[HTTP] JSON deserialized successfully"));
-#endif
-  }
-
-  bool alert_state = jroot["states"][region_name[region]]["alertnow"];
-  if ( alert_state ) { 
-    if ( ! is_alert_now ) {
-      is_alert_now = true;
-#ifdef DEBUG_SERIAL
-      Serial.println(F("Alert!"));
-#endif
-    }
-  } else {
-    if ( is_alert_now ) {
-      is_alert_now = false;
-#ifdef DEBUG_SERIAL
-      Serial.println(F("Alert cancelled"));
-#endif
-    }
-  }
-  is_air_raid_api_ok = true;
-  http.end();
-  return;
 }
 
 void ambient_light_sensor() {
