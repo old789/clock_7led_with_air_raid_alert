@@ -48,6 +48,7 @@ void check_air_raid_api(){
 uint8_t api_aiu(){
 //  char uri[128] = {0};
 //  char region2str[6] = {0};
+  char s[33] = {0};
   WiFiClient client;
   HTTPClient http;
 
@@ -92,13 +93,28 @@ uint8_t api_aiu(){
   }
   
   String payload = http.getString();
-#ifdef DEBUG_HTTP
-  Serial.printf("[HTTP] Got %dB payload\r\n",payload.length());
-#endif
-
-
-
   http.end();
+#ifdef DEBUG_HTTP
+  Serial.printf("[HTTP] Got %dB payload \"%s\"\r\n", payload.length(), payload);
+#endif
+  if ( payload.length() > 1 ){
+#ifdef DEBUG_HTTP
+    Serial.println("[HTTP] Payload to long");
+#endif
+    return(2);
+  }
+
+  payload.toCharArray(s, sizeof(s));
+  if ( s[0] == 'N' ) {
+    alert_state = false;
+  }else if ( s[0] == 'A' ) {
+    alert_state = true;
+  }else{
+#ifdef DEBUG_HTTP
+    Serial.println("[HTTP] Unknown alert state");
+#endif
+    return(2);
+  }
   return(0);
 }
 
