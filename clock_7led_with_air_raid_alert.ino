@@ -245,8 +245,10 @@ char aiu_token[129];
 #define PT_PASSW        PT_SSID + sizeof(ssid)
 #define PT_HOST         PT_PASSW + sizeof(passw)
 #define PT_TZDATA       PT_HOST + sizeof(host)
-#define PT_CRC          PT_TZDATA + sizeof(tzdata)
-#define SIZE_EEPROM     PT_TZDATA + sizeof(tzdata) - 1 // PT_CRC d'not count
+#define PT_API          PT_TZDATA + sizeof(tzdata)
+#define PT_TOKEN        PT_API + sizeof(aerialalerts_api)
+#define PT_CRC          PT_TOKEN + sizeof(aiu_token)
+#define SIZE_EEPROM     PT_TOKEN + sizeof(aiu_token) - 1 // PT_CRC d'not count
 
 // CLI Commands
 Command cmdPoll;
@@ -254,7 +256,9 @@ Command cmdSsid;
 Command cmdPassw;
 Command cmdShow;
 Command cmdHost;
+Command cmdApi;
 Command cmdRegion;
+Command cmdToken;
 Command cmdTZdata;
 Command cmdSave;
 Command cmdReboot;

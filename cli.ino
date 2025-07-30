@@ -19,6 +19,12 @@ void SetSimpleCli(){
   cmdPoll = cli.addSingleArgCmd("poll");
   cmdPoll.setDescription(" NTP poll interval");
 
+  cmdApi = cli.addSingleArgCmd("api");
+  cmdApi.setDescription(" API (0 - ubilling, 1 - alerts.in.ua)");
+
+  cmdToken = cli.addSingleArgCmd("token");
+  cmdToken.setDescription(" Token for alerts.in.ua");
+
   cmdShow = cli.addSingleArgCmd("show");
   cmdShow.setDescription(" Show configuration");
 
@@ -102,6 +108,29 @@ void  loop_cli_mode(){
         memset(tzdata, 0, sizeof(tzdata));
         c.getArg(0).getValue().toCharArray(tzdata, sizeof(tzdata)-1 );
         Serial.println("TZdata set to \"" + c.getArg(0).getValue() + "\"");
+      }
+    } else if (c == cmdApi) {
+      if ( argLen == 0 ) {
+        Serial.println(emptyArg);
+      }else{
+        int i = c.getArg(0).getValue().toInt();
+        if ( i > 1 ) {
+          Serial.println("Argument must be 0 or 1");
+        }else{
+          aerialalerts_api = (uint16_t)i;
+          if ( aerialalerts_api == 1 )
+            Serial.println("Using alerts.in.ua API");
+          else
+            Serial.println("Using ubilling API");
+        }
+      }
+    } else if (c == cmdToken) {
+      if ( argLen == 0 ) {
+        Serial.println(emptyArg);
+      }else{
+        memset(aiu_token, 0, sizeof(aiu_token));
+        c.getArg(0).getValue().toCharArray(aiu_token, sizeof(aiu_token)-1 );
+        Serial.println("Token set to \"" + c.getArg(0).getValue() + "\"");
       }
     } else if (c == cmdSave) {
       eeprom_save();
