@@ -7,6 +7,8 @@ void eeprom_save(){
   EEPROM.put(PT_PASSW, passw);
   EEPROM.put(PT_HOST, host);
   EEPROM.put(PT_TZDATA, tzdata);
+  EEPROM.put(PT_API, aerialalerts_api);
+  EEPROM.put(PT_TOKEN, aiu_token);
   EEPROM.put(PT_CRC, ram_crc());
   EEPROM.commit();
 }
@@ -35,6 +37,8 @@ unsigned long ram_crc() {
   memcpy(buf+PT_PASSW, &passw, strlen(passw));
   memcpy(buf+PT_HOST, &host, strlen(host));
   memcpy(buf+PT_TZDATA, &tzdata, strlen(tzdata));
+  memcpy(buf+PT_API, &aerialalerts_api, sizeof(aerialalerts_api));
+  memcpy(buf+PT_TOKEN, &aiu_token, strlen(aiu_token));
 
   for (uint16_t index = 0 ; index <= SIZE_EEPROM  ; ++index) {
     crc = crc_table[(crc ^ buf[index]) & 0x0f] ^ (crc >> 4);
@@ -63,6 +67,8 @@ unsigned long crc = 0;
   EEPROM.get(PT_PASSW, passw);
   EEPROM.get(PT_HOST, host);
   EEPROM.get(PT_TZDATA, tzdata);
+  EEPROM.get(PT_API, aerialalerts_api);
+  EEPROM.get(PT_TOKEN, aiu_token);
   EEPROM.get(PT_CRC, crc);
 
   if ( crc != ram_crc() ){

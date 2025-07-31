@@ -140,7 +140,14 @@ void  loop_cli_mode(){
       Serial.print(F("WiFi SSID = \""));Serial.print(ssid);Serial.println("\"");
       Serial.print(F("WiFi password = \""));Serial.print(passw);Serial.println("\"");
       Serial.print(F("Host = \""));Serial.print(host);Serial.println("\"");
+      Serial.print(F("API = \""));
+      if ( aerialalerts_api == 1 ) {
+        Serial.println(F("alerts.in.ua\"")); 
+      } else {
+        Serial.println(F("ubilling\"")); 
+      }
       Serial.print(F("Region = \""));Serial.print(region_name[region]);Serial.println("\"");
+      Serial.print(F("Token = \""));Serial.print(aiu_token);Serial.println("\"");
       Serial.print(F("TZdata = \""));Serial.print(tzdata);Serial.println("\"");
     } else if (c == cmdList) {
       for ( uint8_t i = 0; i < REGION_COUNT; i++ ) {
