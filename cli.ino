@@ -98,7 +98,7 @@ void  loop_cli_mode(){
       }else{
         region = c.getArg(0).getValue().toInt();
         Serial.print(F("Region set to \""));
-        Serial.print(region_name[region]);
+        Serial.print(region);
         Serial.println("\"");
       }
     } else if (c == cmdTZdata) {

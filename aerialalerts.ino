@@ -46,22 +46,12 @@ void check_air_raid_api(){
 }
 
 uint8_t api_aiu(){
-//  char uri[128] = {0};
-//  char region2str[6] = {0};
   char s[33] = {0};
   WiFiClient client;
   HTTPClient http;
 
-  /*
-  //itoa(region, region2str, 10);
-  strncpy(uri, AIR_RAID_API_URL_AIU, sizeof(uri)-1);
-  itoa(region, uri+strlen(uri), 10);  // dangerous !
-  strncat(uri, ".json?token=", sizeof(uri)-1);
-  strncat(uri, aiu_token, sizeof(uri)-1);
-  */
-
 #ifdef DEBUG_HTTP
-  Serial.printf(F("[HTTP] begin...\r\n[HTTP] uri = %s\r\n"), aiu_uri);
+  Serial.printf("[HTTP] begin...\r\n[HTTP] uri = %s\r\n", aiu_uri);
 #endif
   
   if ( ! http.begin(client, aiu_uri)) {

@@ -1,7 +1,7 @@
 #define DEBUG_SERIAL  // because just "DEBUG" defined in PZEM004Tv30.h ( legacy :)
 #define DBG_WIFI    // because "DEBUG_WIFI" defined in a WiFiClient library
 #define DEBUG_TIME
-// #define DEBUG_HTTP
+#define DEBUG_HTTP
 
 #if defined ( DBG_WIFI ) && not defined ( DEBUG_SERIAL )
 #define DEBUG_SERIAL
@@ -46,8 +46,7 @@
 #define     SWITCH_NO_ALARM_MODE    D2
 
 // Define URL 
-#define     AIR_RAID_API_URL_UBI    "http://ubilling.net.ua/aerialalerts/"
-//#define     AIR_RAID_API_URL_AIU    "https://api.alerts.in.ua/v1/iot/active_air_raid_alerts/" // "%u.json?token=%s"
+#define     AIR_RAID_API_URL_UBI    "https://ubilling.net.ua/aerialalerts/"
 #define     AIR_RAID_API_URL_AIU    "https://api.alerts.in.ua/v1/iot/active_air_raid_alerts/%u.json?token=%s"
 
 #define     TICS_SHOW_DOTS    4  // ( interval when dots on, 1/10s )
@@ -143,7 +142,7 @@ void time_is_set();
 // Create timers object
 TickTwo timer1( pulse, 100);  // 0.1s
 TickTwo timer2( update_time, 1000);   // 1s
-TickTwo timer3( check_air_raid_api, 10 * 1000);   // 5s
+TickTwo timer3( check_air_raid_api, 20 * 1000);   // 10s
 TickTwo timer4( check_system, 30 * 1000 );  // 30s
 TickTwo timer5( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
 
