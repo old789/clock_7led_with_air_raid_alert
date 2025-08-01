@@ -1,6 +1,6 @@
 void check_air_raid_api(){
   uint8_t rc = 0;
-  if ( digitalRead(SWITCH_NO_ALARM_MODE) == LOW ) {
+  if ( digitalRead(SWITCH_NO_ALARM_MODE) == LOW or region == 0) {
     is_air_raid_api_ok = true;
     is_alert_now = false;
     return;
