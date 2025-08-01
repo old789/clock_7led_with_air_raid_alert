@@ -143,7 +143,7 @@ void time_is_set();
 // Create timers object
 TickTwo timer1( pulse, 100);  // 0.1s
 TickTwo timer2( update_time, 1000);   // 1s
-TickTwo timer3( check_air_raid_api, 20 * 1000);   // 10s
+TickTwo timer3( check_air_raid_api, 15 * 1000);   // 15s
 TickTwo timer4( check_system, 30 * 1000 );  // 30s
 TickTwo timer5( check_is_sntp_valid, 3 * 3600 * 1000);  // 3 hours
 
