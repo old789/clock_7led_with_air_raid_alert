@@ -47,14 +47,18 @@ void check_air_raid_api(){
 
 uint8_t api_aiu(){
   char s[33] = {0};
-  WiFiClient client;
+
+  std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
+  // Ignore SSL certificate validation
+  client->setInsecure();
+
   HTTPClient http;
 
 #ifdef DEBUG_HTTP
   Serial.printf("[HTTP] begin...\r\n[HTTP] uri = %s\r\n", aiu_uri);
 #endif
   
-  if ( ! http.begin(client, aiu_uri)) {
+  if ( ! http.begin(*client, aiu_uri)) {
 #ifdef DEBUG_SERIAL
     Serial.println(F("[HTTP] Unable to connect"));
 #endif
@@ -85,31 +89,46 @@ uint8_t api_aiu(){
   String payload = http.getString();
   http.end();
 #ifdef DEBUG_HTTP
-  Serial.printf("[HTTP] Got %dB payload \"%s\"\r\n", payload.length(), payload);
+  Serial.printf("[HTTP] Got %dB payload '%s'\r\n", payload.length(), payload);
 #endif
-  if ( payload.length() > 1 ){
+  if ( payload.length() > 3 ){
 #ifdef DEBUG_HTTP
     Serial.println("[HTTP] Payload to long");
 #endif
     return(2);
   }
+  if ( payload.length() < 3 ){
+#ifdef DEBUG_HTTP
+    Serial.println("[HTTP] Payload to short");
+#endif
+    return(2);
+  }
 
   payload.toCharArray(s, sizeof(s));
-  if ( s[0] == 'N' ) {
+  if ( s[1] == 'N' ) {
     alert_state = false;
-  }else if ( s[0] == 'A' ) {
+#ifdef DEBUG_HTTP
+    Serial.println("[HTTP] No alert present");
+#endif
+  }else if ( s[1] == 'A' or s[1] == 'P' ) {
     alert_state = true;
+#ifdef DEBUG_HTTP
+    Serial.println("[HTTP] Alert !");
+#endif
   }else{
 #ifdef DEBUG_HTTP
     Serial.println("[HTTP] Unknown alert state");
 #endif
+    alert_state = false;
     return(2);
   }
   return(0);
 }
 
 uint8_t api_ubi(){
-  WiFiClient client;
+  std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
+  // Ignore SSL certificate validation
+  client->setInsecure();
   HTTPClient http;
   JsonDocument jroot;
   JsonDocument jfilter;
@@ -118,7 +137,7 @@ uint8_t api_ubi(){
   Serial.println(F("[HTTP] begin..."));
 #endif
 
-  if ( ! http.begin(client, AIR_RAID_API_URL_UBI)) {
+  if ( ! http.begin(*client, AIR_RAID_API_URL_UBI)) {
 #ifdef DEBUG_SERIAL
     Serial.println(F("[HTTP] Unable to connect"));
 #endif

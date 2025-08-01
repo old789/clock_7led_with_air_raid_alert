@@ -22,6 +22,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClientSecureBearSSL.h>
 #include <time.h>
 #include <coredecls.h>      // optional settimeofday_cb() callback to check on server
 #include <EEPROM.h>
