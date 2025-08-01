@@ -143,17 +143,25 @@ void  loop_cli_mode(){
       Serial.print(F("API = \""));
       if ( aerialalerts_api == 1 ) {
         Serial.println(F("alerts.in.ua\"")); 
+        Serial.print(F("Token = \""));Serial.print(aiu_token);Serial.println("\"");
+        Serial.print(F("Region = \""));Serial.print(region);Serial.println("\"");
       } else {
         Serial.println(F("ubilling\"")); 
+        Serial.print(F("Region = \""));Serial.print(region_name[region]);Serial.println("\"");
       }
-      Serial.print(F("Region = \""));Serial.print(region_name[region]);Serial.println("\"");
-      Serial.print(F("Token = \""));Serial.print(aiu_token);Serial.println("\"");
       Serial.print(F("TZdata = \""));Serial.print(tzdata);Serial.println("\"");
     } else if (c == cmdList) {
-      for ( uint8_t i = 0; i < REGION_COUNT; i++ ) {
-        Serial.print(i);
-        Serial.print(" ");
-        Serial.println(region_name[i]);
+      if ( aerialalerts_api == 1 ) {
+        for ( uint8_t i = 0; i < REGION_COUNT; i++ ) {
+          Serial.println(region_name_aiu[i]);
+        }
+        Serial.println("Повний перелік див. https://devs.alerts.in.ua/#modeluid");
+      } else {
+        for ( uint8_t i = 0; i < REGION_COUNT; i++ ) {
+          Serial.print(i);
+          Serial.print(" ");
+          Serial.println(region_name[i]);
+        }
       }
     } else if (c == cmdReboot) {
       if ( ( argLen == 0 ) || c.getArg(0).getValue().equalsIgnoreCase("soft") ) {
